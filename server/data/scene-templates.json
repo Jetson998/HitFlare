@@ -1,0 +1,164 @@
+[
+  {
+    "id": "tpl_bg",
+    "title": "商品换背景",
+    "description": "一张商品图，分钟级换出 N 套场景/背景，替代外包摄影精修。",
+    "scene_type": "bg",
+    "cover_url": "/templates/tpl_bg-v1.svg",
+    "slots": [
+      {
+        "key": "product",
+        "label": "商品图",
+        "required": true
+      }
+    ],
+    "vars_schema": [
+      {
+        "key": "bgStyle",
+        "label": "背景风格",
+        "required": false,
+        "default": "木质桌面",
+        "type": "chips",
+        "options": [
+          "木质桌面",
+          "大理石台面",
+          "ins 柔光",
+          "纯色背景",
+          "节日氛围"
+        ]
+      },
+      {
+        "key": "light",
+        "label": "光影氛围",
+        "required": false,
+        "default": "柔光",
+        "type": "chips",
+        "options": [
+          "自然光",
+          "柔光",
+          "暖光",
+          "冷光"
+        ]
+      }
+    ],
+    "prompt_template": "以 Image 1 为唯一商品主体，保持其外观、比例、材质、包装文字与品牌标识不变，背景替换为{bgStyle}，{light}，电商主图风格，高质感",
+    "endpoint": "edits",
+    "version": 1,
+    "enabled": true
+  },
+  {
+    "id": "tpl_model",
+    "title": "模特上身 / 真人试穿",
+    "description": "服装/配饰商品图 + 可选模特参考，生成模特上身效果图，用于电商详情页/营销素材。",
+    "scene_type": "model",
+    "cover_url": "/templates/tpl_model-v1.svg",
+    "slots": [
+      {
+        "key": "product",
+        "label": "服装/商品图",
+        "required": true
+      },
+      {
+        "key": "modelRef",
+        "label": "模特参考图（可选）",
+        "required": false
+      }
+    ],
+    "vars_schema": [
+      {
+        "key": "modelType",
+        "label": "人物风格",
+        "required": false,
+        "default": "时尚模特",
+        "type": "chips",
+        "options": [
+          "时尚模特",
+          "日常穿搭",
+          "运动健身",
+          "商务正装",
+          "街头潮流"
+        ]
+      },
+      {
+        "key": "pose",
+        "label": "姿态",
+        "required": false,
+        "default": "自然站姿",
+        "type": "chips",
+        "options": [
+          "自然站姿",
+          "侧身展示",
+          "动态pose",
+          "半身特写"
+        ]
+      },
+      {
+        "key": "scene",
+        "label": "场景",
+        "required": false,
+        "default": "纯色背景",
+        "type": "chips",
+        "options": [
+          "纯色背景",
+          "室内场景",
+          "户外街景",
+          "工作室"
+        ]
+      }
+    ],
+    "prompt_template": "Image 1 是必须准确保留版型、颜色、材质、纹理与标识的服装或商品；若提供 Image 2，则 Image 2 是必须保持身份、面部、发型与体态的模特参考。让{modelType}自然穿着 Image 1 中的服装，{pose}，{scene}，服装与人体结构贴合真实，时尚摄影，高质感，电商主图风格",
+    "endpoint": "edits",
+    "version": 1,
+    "enabled": true
+  },
+  {
+    "id": "tpl_poster",
+    "title": "电商海报 / 小红书封面",
+    "description": "商品图 + 标题/卖点，生成营销海报或小红书封面图，直接可用于投放。",
+    "scene_type": "poster",
+    "cover_url": "/templates/tpl_poster-v1.svg",
+    "slots": [
+      {
+        "key": "product",
+        "label": "商品图",
+        "required": true
+      }
+    ],
+    "vars_schema": [
+      {
+        "key": "title",
+        "label": "标题文案",
+        "required": true,
+        "default": "",
+        "type": "text",
+        "placeholder": "例如：夏日新品 / 限时特惠"
+      },
+      {
+        "key": "sellingPoint",
+        "label": "核心卖点",
+        "required": false,
+        "default": "",
+        "type": "text",
+        "placeholder": "例如：买二送一 / 全场包邮"
+      },
+      {
+        "key": "style",
+        "label": "设计风格",
+        "required": false,
+        "default": "简约现代",
+        "type": "chips",
+        "options": [
+          "简约现代",
+          "国潮风",
+          "小清新",
+          "高端奢华",
+          "活力撞色"
+        ]
+      }
+    ],
+    "prompt_template": "以 Image 1 为唯一商品主体并保持产品外观、包装文字与品牌标识准确，{style}风格电商营销海报，商品主体清晰突出，围绕标题「{title}」和卖点「{sellingPoint}」形成完整、饱满、有视觉冲击力的画面；不要生成、改写或臆造任何中文标题、卖点、Logo 或随机文字",
+    "endpoint": "edits",
+    "version": 1,
+    "enabled": true
+  }
+]

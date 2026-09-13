@@ -1,0 +1,180 @@
+---
+title: Pending Tests
+description: Implemented changes that still need manual verification
+---
+
+# Pending Tests
+
+The current release needs manual verification in these areas:
+
+- HitFlare UI V2 first implementation: common pages and navigation use the same fluid side gutters without a universal max-width; wide screens expand grids, tables, and image results. PC landscape is the primary review target. Verify `/`, `/assets`, `/prompts`, `/config`, `/image`, and `/admin/users` at 1440×900 and 1920×1080, including left/right alignment, page heading hierarchy, filter/search rows, 32px desktop controls, primary/secondary/light button hierarchy, and no horizontal overflow. Verify the image workbench keeps only 图片生成 / 场景模板, folds generation settings into its summary and dialog, and uses the three-column desktop layout with generation history on the right. Verify the Agent overlay does not compress a narrow main workspace into an unusable vertical layout. The current browser pass observed the image template page in a landscape desktop window; full 1920×1080, dark-theme, touch, real-generation, and all dialog states remain to be checked by the user.
+- Homepage first-screen proportions: at PC landscape sizes, the brand guidance area should fill the available viewport below the 56px top navigation, and `YOUR CREATIVE WORKSPACE` should present its title, Agent interaction example, and result preview within one viewport. Verify at 1440×900 and 1920×1080, then check that the mobile layout remains content-driven without excessive blank space.
+- Creative Inspiration layout restoration: the main page should use the open-source content flow, keep the current title and subtitle position and size, show category and tag filters in the content area, show the first three tag rows by default, and expand the remaining tags into an independently scrollable area. `scene-template` must be a tag rather than a category, while selected-condition clearing and result counts remain available. The expand control should sit at the upper-right of the tag area with one arrow icon and a readable click target. Verify the prompt selection dialog keeps real categories and tags consistent.
+- Account access and user administration: an anonymous visitor should be redirected to `/login`; the login page should use the supplied full-screen background plus the separate transparent HitFlare Logo, with the Logo independently anchored at the upper-left on desktop and mobile and a compact dark panel on the right on desktop. The background should keep its focal composition on mobile. The panel title should be `Sign in`, with no invitation description, and the email, password, and login button should keep balanced vertical spacing. The first administrator should be initialized from the documented email, display-name, and password environment variables and remain signed in for seven days. Only an administrator should see User Management as the final main-navigation item or open `/admin/users`; direct API calls by a regular user must return 403. User Management should match Settings for content width, heading size, and page spacing. Creating a user should require a display name, unique email, and initial password; Regular user should remain the default role, and users should sign in with email. Row actions should edit email, display name, and role, directly reset passwords, and disable or enable accounts without changing the user's UUID. Disabling, resetting a password, or changing a role should invalidate that user's sessions. The current administrator must not disable or demote themselves, and the system must retain at least one active administrator. The account menu should let users change their own password after verifying the current password. A successful login should update Last login. API Key and Base URL settings must remain browser-local. Restarting the Docker container must preserve accounts through the `hitflare-data` volume.
+- Role capability isolation: as an administrator, verify User Management, configuration import/export, Local proxy, WebDAV, prompt-source maintenance and refresh, custom model call scripts, canvas plugin management, and local Codex Agent controls are enabled. As a regular user, verify these controls remain visible where useful but buttons, switches, inputs, script editors, plugin entries, and local Agent panels are disabled or hidden; direct calls to the protected client service functions should reject with status 403. Regular users must still edit their own channels, Base URL, API Key, model selections, generation preferences, assets, canvas, image/video workbenches, prompt browsing, and the server creative Agent. Switching from an administrator to a regular user in the same tab should disconnect the local Agent and remove active plugin nodes. The current implementation protects browser-only capabilities in the client; server-side `/api/admin/*` remains the authoritative user-management guard.
+- Local proxy: Settings should show a dedicated Local proxy tab between Providers and Preferences, with a switch that is off by default. Turning it on should reveal the `npx @basketikun/canvas-proxy@latest` command (with `--port` appended when a non-default port is configured), a copy action, and an address field defaulting to `http://127.0.0.1:23210` that normalizes a missing scheme and trailing slashes on blur. Test connection should succeed only while the command is running. With the proxy on, fetching model lists, generating images, videos, text (including streamed output), and audio, running custom call scripts, polling video tasks, downloading generated images and videos, and WebDAV connection tests plus sync should all route through the proxy and keep working; turning it off should restore direct requests. The proxy itself should forward request methods, headers, query strings, and bodies unchanged, stream SSE responses without buffering, and keep `data:` and `blob:` URLs untouched.
+- Image and video size settings: Image settings should split resolution (`1k` / `2k` / `4k` / auto) from aspect ratio (`1:1`, `2:3`, `3:2`, `4:3`, `3:4`, `16:9`, `9:16`, `21:9`, `9:21`, auto) and fill W/H from that pair. Video settings should keep `480p` / `720p` / `1080p` (plus a custom `p` value) and `1:1` / `3:4` / `4:3` / `16:9` / `9:16` / `21:9` / auto, then fill W/H from that pair. Duration should be a 4–30 second slider with the current value on the right; auto ratio should disable W/H.
+- Built-in video requests: without a custom call script, OpenAI-format channels should send `mode`, `first_frame`/`last_frame` or `image[]`, `generate_audio`, `watermark`, and reference videos/audio like the insertable template, and must not use `input_reference[]`. Gemini-format channels should use `predictLongRunning` with `image`/`lastFrame` or `referenceImages`, and must not report that video is unsupported. Refreshing the page should continue polling a Gemini task.
+- Video generation mode: Video settings should offer First & last frame and General reference. One image is sent as the first frame, two images as first and last frames, and more than two images as general references even if first-and-last-frame mode is selected. Built-in requests and request scripts should use `frames` or `reference`.
+- Gemini image generation: Gemini-format channels and the Gemini image call-script template should send `generationConfig.responseModalities: ["TEXT", "IMAGE"]` with `imageConfig.aspectRatio` / `imageConfig.imageSize`, and must not send `responseFormat`.
+- Video request scripts: opening Call Script for a Video model should open a full-screen stepped editor. The left panel should follow Read the rules → Let another AI write it → Available variables, and list `videos` (File[]) and `audios` (File[]). Copy script brief should include the capability, variables, return requirements, and writing rules. Inserted templates should be async functions whose parameter lists unpack `params` (image templates must include `quality`, `size`, `count`, and `background`). The OpenAI video template should use FormData with `mode`, duration, size, resolution, audio, watermark, and reference images/videos/audios; `mode=frames` should send `first_frame` / `last_frame`, and `mode=reference` should send `image[]`, then poll and download `/content`. After pasting a script from another AI and saving, generating from the canvas with connected reference videos or audio should pass those files into the script.
+- URL credential import: opening the app with a new valid `baseUrl` and `apiKey` should append a provider without changing existing providers; importing the same Base URL again, including trailing-slash or `/v1` variants, should update only that provider and remain idempotent; an API key without a Base URL or an invalid Base URL should leave all settings unchanged.
+- Documentation navigation and page contents: at phone width, opening the documentation sidebar should show the current section and its description at the top. Expanding it should allow switching among Overview, Canvas Guide, Development, Progress, Business, and Support; the selected section and page list should update together while the desktop top tabs remain unchanged. At widths of 960px and above, a table of contents with hierarchical track lines should appear to the right of the article, support heading navigation, and highlight the current heading while scrolling; narrower layouts should keep the top collapsible contents control.
+- Canvas Agent generation-flow references: when a generation prompt contains only `@[node:...]` references already passed through `referenceNodeIds`, the existing text, image, video, audio, or group nodes should connect directly to the generated config node without creating a duplicate prompt text node; prompts containing ordinary prose should continue creating their own prompt text node.
+- Video frame capture: right-clicking a video node with content should show Capture first frame, Capture last frame, and Capture current frame. Each action should create and select a proportional image node to the right, connect the video to the image, use the player's visible position for the current frame, and leave the original playback position unchanged.
+- Text nodes: the Generate button should no longer appear in the upper-right corner of the node body, and text should use the full content area. The image-generation action in the hover toolbar should continue to create a generation configuration.
+- Multi-text generation: requesting more than one result should create one text-result node and one source connection. Its upper-right count should expand all successful alternatives like a multi-image node; setting an alternative as primary should immediately replace the body while retaining the previous primary, and edits to any primary text should remain when switching away and back.
+- Group references: group nodes should use a transparent, lightweight border and title treatment and expose a source handle on the right. Connecting a group to a generation node should include every populated image, video, audio, text, and reference-capable extension node inside it. Regular prompt mentions should list the group's resources, while the generation-config composer should allow selecting the whole group with one `@`; resources referenced both individually and through the group must be sent only once.
+- Group selected nodes: after selecting two or more nodes, a rounded dashed bound should wrap the whole selection, with Group above it. It wraps those nodes in a group without moving them, then selects the new group. Selecting a group should allow Ungroup from the hover toolbar, context menu, or `Ctrl/Cmd+Shift+G`. Nodes already in the same group should show Ungroup instead of grouping again. Dragging into a group, group references, and the left-panel tree should keep working.
+- Node reference bar: regular prompt panels, expanded editors, and generation-config inputs should show their current input nodes above the editor. Images and videos should use thumbnails with hover previews, while text, audio, and extension nodes show their matching type. A group connection should expand into every valid content node inside the group, and removing any expanded item should disconnect the whole group. The plus button should enter canvas selection for adding multiple valid references. Connected nodes, the target itself, children already referenced through a group, and unsupported nodes must not be selectable again; ESC or the top hint should return to the input, and new connections should immediately update the `@` list.
+- Multi-image transparency: when a multi-image node containing transparent PNG or WebP assets is expanded, transparent areas in both the primary and alternatives should reveal the canvas; switching primary images must not introduce a white or panel-colored background.
+- Canvas navigation: the canvas should open in Move mode by default, and the bottom toolbar should switch between Select and Move modes and reflect the active mode with its icon; Select should draw a clearly spaced dashed range whose dash length, gap, and stroke width remain visually constant at every zoom level, while Move should drag elements directly and pan only when dragging the blank background. Clicking blank canvas space in either mode should deselect the current node and close its top toolbar and lower prompt panel. Holding Control or Space should temporarily invert the active tool without changing the toolbar mode: Select becomes Move, and Move becomes range selection. After clicking any canvas-page button, pressing Space should only invert the tool and must not trigger that button again. Middle-button panning from any position and additive node selection with Shift/Cmd should continue to work, while Space remains available inside text inputs and editable content.
+- English routes without a locale prefix should load directly without a redirect loop; switching between English and Simplified Chinese should keep navigation, settings, titles, descriptions, Ant Design components, and persisted preferences in the selected language.
+- Global Dropdown, Menu, Select, Cascader, and TreeSelect popup backgrounds, hover states, and selected states in both light and dark themes.
+- Canvas node resize stability: importing an image should open its prompt panel, resizing it immediately from any corner should temporarily hide the panel, remain smooth without flashing or triggering a maximum update depth error, and restore the panel after release. Prompt scrolling, generated-prompt restoration, edit-prompt persistence after closing an existing image or text node panel, expanded prompt editing with live synchronization and `@` references, image editing, drag-and-drop references, and generation configuration should continue to work.
+- Text output count: both a text node's lower prompt panel and a generation configuration node in Text mode should expose an independent generation count from 1 to 15, default to one, and create that many text nodes. Changing the text count must not alter the image count, and switching a generation configuration node back to Image should continue to use the configured image count.
+- Node editing entry points: the image toolbar should default to icons without labels and no longer include Edit; the text toolbar should no longer include Edit or Edit text. Clicking an image, text, or video node without dragging should open its lower prompt panel directly, while image toolbar labels can still be enabled explicitly from the toolbar settings.
+- Canvas side panel: clicking an element row should smoothly center and select its node without zooming above 100%; image elements with content should still open the large preview without triggering canvas focus.
+- 画布左侧树形列表：组内节点应缩进显示在所属组下方，并带有清晰的层级连接线；组箭头可以收起和展开子节点，搜索或类型筛选时仍应保留匹配节点所属的组。
+- Multi-image canvas generation: starting N images should immediately create one image node with N expandable slots and one incoming connection; each empty slot should independently show generating or failure while requests are running, every slot with image content should always display that image, and the first successful image should appear as the primary image immediately. The collapsed state should use a compact stack with at most three closely spaced backplates and a clearly legible count control; only clicking the count control should expand or collapse the slots upward and to the right, while double-clicking the image should open its large preview. Every completed secondary image should keep a clearly legible primary-image action visible in both themes. Expanded groups should remain expanded when clicking elsewhere, dragging, resizing, or previewing, and multiple groups may remain expanded together.
+- Multi-image primary selection: choosing another primary image should preserve the node center and current maximum edge while adapting to the new image ratio; free-resize nodes should keep their exact dimensions, and the viewport zoom indicator must not change.
+- Failed multi-image slots: every failed slot, including the current primary slot, should expose retry and delete actions. Retry should update only that slot without replacing an existing successful primary image; delete should remove only that failed slot and update the displayed count.
+- Multi-image resize: resizing the root node while child images are expanded should keep the group expanded and resize normally without triggering nested React updates or an application error.
+- Multi-image alternatives: expanded images should use up to four columns so larger batches stay compact; double-clicking any completed child image should preview that exact image without changing the primary image. Every completed image, including the primary image, should provide an independent download action, while alternatives should also keep clearly legible create-copy and set-primary actions in both themes. Create-copy should add an independent image node to the right of the group, select it, and leave the original image group unchanged.
+- Canvas Agent startup, MCP status, model and permission controls, approvals, version reporting, diagnostics, streaming responses, history consistency, multi-tab isolation, and local Skill management.
+- Canvas Agent credential redaction: Codex and Claude CLI stderr containing Bearer tokens, `sk-` keys, explicit API key/token/authorization assignments, ANSI formatting, or credentials split across output chunks should reach neither debug logs nor browser diagnostic events in plaintext; ordinary stderr text should remain intact.
+- Image API model parameters: `gpt-image-*` generation and edit requests should omit `response_format`, while `dall-e-*` requests should continue sending `response_format: "b64_json"`.
+- Image URL persistence: canvas and image-workbench generation should download each remote API result only once, validate it as a decodable image, and persist it in IndexedDB; `200` responses containing non-image data should fail, stopping canvas generation during download should not save or apply the result, CORS-blocked but displayable images should keep their original URL without an empty storage key, and plugin calls should still receive Data URLs whenever the remote image is readable.
+- Multi-reference image editing: OpenAI-format edits with more than one reference image should submit files as repeated `image[]` form fields; a single reference should continue using `image`. Newly created OpenAI image scripts should use the same field names. Gemini-format channels and already saved custom scripts are unchanged.
+- Agent header tabs in English and Chinese at different panel widths; labels should collapse to icons and counts before either edge is clipped.
+- Agent message layout, Markdown, code blocks, attachments, token statistics, progress timelines, command groups, and scroll-follow behavior.
+- Agent inline references: type `/` to select an enabled Skill or `@` to select a canvas asset at the caret; tokens should remain aligned with text, support keyboard navigation and hover previews, and preserve their positions after sending or refreshing.
+- Agent message metadata: image attachments, Skills, canvas references, and local previews should survive page refreshes and Agent restarts through exact `clientMessageId`, `threadId`, and `turnId` ownership; protocol upgrades must not reset the independent storage format, unknown or damaged storage must refuse writes without overwriting files, no records may be silently pruned by count or size, and deleting a thread should remove its metadata and preview assets without relying on browser IndexedDB or text matching.
+- Prompt Center layout, source synchronization, search, asset insertion, prompt detail dialogs, and compact split-layout prompt pickers in the image and video workbenches.
+- Workbench history image cleanup: after generating content in the image or video workbench, deleting an asset, canvas image node, canvas content, or canvas project must not remove thumbnails, results, or references from generation history; deleting a generation record should still remove its dedicated local files.
+- Prompt text labels: when a regular node or generation configuration is connected to several text nodes, every upstream text block appended to the prompt should start with its label such as `【Text 1】` or `【Text 2】`, numbered in connection order and matching both the `@` references in the prompt and the reference bar. A single text input should still be labeled, and image, video, and audio numbering must stay unchanged.
+- Local mask editing: the dialog footer should offer Reset, Export to canvas, and Generate now. Both actions require a painted area and an edit request; Export to canvas should only write the nodes and connections while prefilling the composed prompt in the result node's prompt panel for manual generation, and Generate now should start the request right after writing the nodes. After painting an area and entering an edit request, confirming should add a mask annotation node below the source image showing the original picture with a translucent blue overlay on the painted area that matches the color and opacity used while painting in the dialog, create the result node to the right, and connect both the source image and the mask annotation to it. The request should be sent as two ordinary reference images with a prompt that names them by index, without the `mask` API parameter, and it should also work for Gemini-format channels; only the marked area should change, and the result must not keep any blue overlay.
+- Settings import/export and WebDAV-related configuration.
+- WebDAV canvas deletion: deleting a previously synced canvas and syncing again should not restore it from WebDAV; canvases created on another device and not deleted should still appear after sync. Refreshing before the next sync should still keep the deletion. Asset and generation-history deletions are unchanged.
+- Local storage settings: the Settings page should provide a Local storage tab that reads only the `infinite-canvas` database and shows IndexedDB usage, total site usage, browser quota, quota percentage, and per-object-store record counts and content size; refreshing after local data changes should update the figures without blocking the rest of the page.
+- Asset image download: opening an image that still previews in My Assets and clicking Download image should save the file. Titles with Chinese characters, spaces, or brackets such as `【】` should remain the downloaded filename and must not need renaming. Images saved from the canvas in the same session should download as well.
+- Canvas video task resume: starting an OpenAI-style video generation should store the remote task ID on the video node. After a page refresh, a still-pending video should keep polling automatically; if polling stopped, **Get task status** should resume with that task ID until the video is ready, the task fails, or the status request errors. Task failure should then allow a normal retry that creates a new generation.
+
+The Chinese version contains the complete item-by-item acceptance checklist.
+
+## 图片分辨率尺寸表
+
+选择分辨率和宽高比后，W/H 按下表填写，单位为像素。预设尺寸不受「16 倍数对齐」开关影响；该开关只控制手动输入尺寸时的对齐。最终生成尺寸以所选模型的实际输出为准。
+
+| 宽高比 | 1K | 2K | 4K |
+| --- | ---: | ---: | ---: |
+| **1:1** | **1024 × 1024** | **2048 × 2048** | **2880 × 2880** |
+| **2:3** | 1024 × 1536 | 1360 × 2048 | 2336 × 3520 |
+| **3:2** | 1536 × 1024 | 2048 × 1360 | 3520 × 2336 |
+| **4:3** | 1024 × 768 | 2048 × 1536 | 3312 × 2480 |
+| **3:4** | 768 × 1024 | 1536 × 2048 | 2480 × 3312 |
+| **16:9** | 1536 × 864 | 2048 × 1152 | **3840 × 2160** |
+| **9:16** | 864 × 1536 | 1152 × 2048 | **2160 × 3840** |
+| **21:9** | 2016 × 864 | 2688 × 1152 | **3840 × 1648** |
+| **9:21** | 864 × 2016 | 1152 × 2688 | **1648 × 3840** |
+
+待验收：
+
+- 在画布和图像工作台逐项切换 3 档分辨率与 9 种比例，W/H 应与表格一致，重新打开设置后仍选中正确档位；重点检查 1K 的 2:3、16:9、21:9 及对应竖图，以及 4K 的 1:1。
+- 所有 4K 预设提交时均不应触发本地总像素或最长边限制；生成和编辑请求、调用脚本应收到所选像素尺寸。
+- 分辨率为自动时保留比例选择，比例为自动时禁用 W/H；手动输入 W/H 后，对齐开关仍应按原有方式工作。
+- Gemini 在质量为自动时，应将表中尺寸识别为对应的 1K / 2K / 4K；显式选择质量时维持原有优先级。视频尺寸设置应保持原有行为。
+
+
+## HitFlare 工作台改造
+
+## 创作 Agent
+
+用户已确认原四阶段的完整浏览器端到端验收完成，核心能力已同步至功能说明。以下本轮新增 UI 细节待确认，暂不计入该验收结论。
+
+### 本轮卡片优化待确认
+
+- 普通创作提示词、优化后的提示词及打开原始提示词折叠区后的内容，默认显示最高 18rem（默认 288px）的预览，不启用内部滚动；鼠标位于预览上时滚轮应继续滚动上下对话。仅超高内容显示“展开提示词”，点击后才可在区域内用鼠标、触控及键盘滚动；点击“收起提示词”应回到开头并恢复无内部滚动的预览。短内容按实际高度显示且无展开按钮；检查打开原文折叠区、Markdown 内容变化及调整面板宽度后按钮是否正确显示。完整文本仍可编辑、保存和带入图片创作页。
+- 卡片顶部不再显示编辑、还原按钮；底部统一为“使用方案 / 修改方案”（未修改）、“使用方案 / 修改方案 / 还原图标”（已保存修改），编辑时显示“取消 / 保存”。还原图标应显示提示与无障碍名称，取消还原不改变内容，确认还原后回到原稿并恢复未修改状态。提示词内部滚动不移动底部操作区。
+- 此前卡片调整记录过 `git diff --check` 和 `web/npm run typecheck`，不作为本次新增交互的验收依据；本次提示词按需展开调整未执行构建、类型检查或模型调用，浏览器滚动交互待确认。
+- 用户消息与 Agent 回复之间不应出现分隔线，对话连续展示。
+- 用户消息应靠右显示并使用浅灰色半透明圆角背景；用户名取当前登录账户的 `username`，不再显示“你”，长用户名省略并可悬停查看。气泡上下内边距均为 12px，正文无默认外边距，无参考图时无空素材容器带来的额外留白；检查短文本、多行文本与带图消息。Agent 普通回复和创作方案卡片靠左显示，长文本、参考素材和窄屏布局不应出现横向溢出。
+- 用户气泡应按内容自适应宽度，并保留最大宽度约束；创作方案应呈现为独立白色卡片，顶部状态栏、正文区、底部操作区可视觉区分，具有圆角、细边框和轻阴影；长提示词点击展开后在内部滚动时，底部操作区保持稳定。
+- Agent 顶部操作顺序应为“+ 新建会话 → 历史会话 → 关闭 Agent”，新建和历史会话功能保持原行为。
+- 顶部无当前会话时显示“创作 Agent”，有会话时显示会话名称，下面不再重复显示标题。点击名称应在原位置出现输入框并选中文本，失焦或按回车保存，不出现重命名弹窗或确认按钮；中文输入法选词回车不应提交，Esc 取消，空白和未修改的名称不应发起保存请求。检查长名称不挤压右侧按钮、保存期间只读、失败后编辑内容保留、历史列表及刷新后的名称一致，以及切换会话或账号时编辑状态不串用。本次标题调整未执行构建、类型检查或模型调用，交互待浏览器确认。
+
+- 输入区应为单一圆角容器，上传图片、选择素材在左下，默认文本模型简称与发送按钮在右下；参考图预览和文字也在容器内。检查上传、预览、移除、选择素材、草稿保存与发送入口，方案卡片中的素材操作应保留原有布局。
+- 模型简称只去掉开头的 `claude-` 或 `gpt-`，忽略大小写：`Claude-opus-x → opus-x`、`Claude-fable-x → fable-x`、`gpt-5.6-sol → 5.6-sol`、`gpt-6-astra → 6-astra`，已有 `fable-x` 等名称保持不变。切换默认文本模型后显示应同步更新，未选择时显示“未配置模型”，不能回退显示图片模型；长名称省略且不能挤压发送按钮，实际请求使用完整模型名。
+
+### 此前验收记录
+
+- Agent 渠道根地址与带 `/v1` 地址均应请求 `/v1/chat/completions`；尾斜杠不应形成错误路径。服务端回归测试已通过，真实 `gpt-5.6-sol` 重试约 11.5 秒返回并保存创作方案。连接失败及 HTTP 400/401/403/404/429/500 等错误现在显示分类提示，日志不输出密钥或上游原始错误正文；180 秒超时及不自动重试的边界保持不变。
+- Agent 面板打开、关闭、刷新、切换到后台和返回前台时，确认实时连接只保留当前可见面板的一条；多标签页同时打开时，草稿保存、登录和普通接口请求不应排队或持续转圈。
+- 登录两个不同账号，分别创建会话并上传参考图；确认双方只能读取自己的会话、消息和素材，跨账号 URL、会话素材和草稿均被拒绝。
+- 在右侧 Agent 面板确认默认进入当前对话；历史页支持新建、搜索、切换和重命名，刷新后服务端会恢复会话和草稿。
+- 输入区下方不显示常驻的草稿保存提示；草稿仍会自动写入服务端，刷新或重新打开 Agent 后可恢复。会话标题编辑的最新交互见本轮待确认项。
+- 输入框自动保存草稿，不常驻显示保存成功或保存中的状态；仅保存失败时保留错误与处理入口。发送按钮不应持续旋转，发送后应恢复正常状态。
+- 发送明确创作目标，确认回复以普通文本或独立的“创作方案”卡片出现；卡片包含核心创作目标、优化提示词和参考素材，不能出现模型、比例、清晰度、数量或复制提示词主按钮。已用本地用户配置的 `gpt-5.6-sol` 完成真实返回验证。
+- 连续对话已通过真实模型验证：创作卡片后的确认消息约 3.3 秒返回，实时展示“已确认”，输入框及发送状态正常恢复；卡片与后续消息均服务端持久化。
+- 普通创作卡片只展示当前方案；只有提示词优化结果包含原始提示词时，才显示“原始提示词”（默认折叠）和“优化后的提示词”（默认展开），正文按段落和列表展示。
+- 提示词优化卡片不重复显示与对话标题相同的优化目标；普通创作卡片仍显示创作目标，编辑模式仍可修改目标。
+- 长会话标题应在面板宽度内单行省略，点击仍可编辑、悬停可查看全文。方案支持加粗小标题、段落和要点列表，连续纯文本按句子分段阅读；编辑与带入图片页使用完整内容。
+- 优化对照的原文必须来自当前会话，普通创作不得带对照原文；编辑方案不能改写对照来源，使用方案仅带入当前最终提示词与参考图。服务端回归已覆盖引用校验、保存后的来源保留和交接字段。
+- 在创作方案卡片直接修改目标、提示词和参考图，保存后确认显示已修改状态；再次对话使用最新修改；恢复原方案后内容回到模型原稿。
+- 点击使用方案主操作，确认跳转 `/image`，只带入提示词和参考图，不自动生成，模型、比例、清晰度和数量由用户在图片创作页调整。
+- 渠道页拉取多个模型后，进入「配置与用户偏好 → 偏好设置」，只将“默认文本模型”设为目标模型；确认 Agent 只使用该偏好模型及其绑定渠道，不因渠道列表中存在其他模型而自行切换。未配置时历史、编辑和素材管理仍可用，发送显示配置提示。
+- 关闭或刷新页面后确认服务端运行状态可恢复；服务重启后的运行任务标记为中断，不自动重复模型调用。
+
+代码与接口检查已完成，以下项目仍需要在浏览器中确认：
+
+- 首页“拍照解题”显示本地封面，其他外部灵感封面加载失败时显示占位，不出现裂图图标。
+- 未配置图片渠道时点击首页“开始图片创作”，应直接打开已有的“配置与用户偏好”浮窗并停留在渠道页；已配置时应直接进入 `/image`。
+- 首次打开或清空配置后，配置页不应自动出现默认 OpenAI 渠道、接口地址或模型；点击“新增渠道”后需由用户自行填写渠道信息。
+
+- 将浏览器主题切换为浅色后刷新，确认图片页和首页保持白色背景、文本和弹层具有足够对比度；已保存的深色偏好仍应能够手动切回。
+- `/image` 顶部只显示“图片生成”和“场景模板”两个一级页签；图片生成页统一使用提示词和可选参考图，桌面端生成记录位于结果右侧，窄屏改用抽屉；生成记录不显示新建、全选、删除按钮或记录选择框，只支持记录浏览与回看；参考图删除按钮在悬停或键盘聚焦时应以半透明深色叠层和白色图标清晰显示，触屏设备保持可操作。
+- 主导航只显示五项；`/video`、`/canvas` 和旧画布链接仍能直接打开；顶部和移动端使用本地 `/brand/` Logo。
+- 场景模板列表能加载 `tpl_bg`、`tpl_model`、`tpl_poster`；进入任一场景的配置工作区后，标题下不再显示说明副标题；必填素材、可选素材和变量校验正确，参考图支持拖拽、粘贴、上传和从我的资产选择；“补充提示词”应出现在素材与变量下方并进入编译结果；确认生成后结果进入资产和生成记录。
+- 创作灵感中“场景模板”应作为 `scene-template` 标签显示，并能从灵感详情跳转到对应模板配置页；外部提示词源刷新失败时不应阻塞本地模板。
+- 使用真实用户配置的 AI 渠道分别验证文生图、图生图、结果保存、下载、再次作为参考图和失败重试。本地自动测试不包含付费 AI 请求。
+- 视觉复核正式 Logo 在顶部、首页和移动端的尺寸与清晰度；检查浏览器 favicon、32px favicon 和 Apple Touch Icon。
+- 图片创作页提示词标题右侧不再显示“创作灵感”和“我的资产”入口；点击“生成设置”摘要入口，确认摘要和模型选择控件显示模型名称但不显示渠道名称，弹层内按质量、分辨率、尺寸、宽高比、透明背景、生成数排序，质量、分辨率和宽高比的自动选项位于最前；确认无参考图走文生图，有参考图走图生图，页面不显示文生图/图生图切换。
+- 首页确认按“品牌 → 创作灵感 → 场景”顺序显示，`YOUR CREATIVE WORKSPACE` 使用本地创作示意图，创作灵感区保留示例卡片和“更多创作灵感”，场景区保留“为每一种场景，找到起点”。
+- 首页确认首屏引导语与快捷入口居中，中文品牌口号保持单行，`YOUR CREATIVE WORKSPACE` 位于其下方，并同时展示简化 Agent 操作区和真实产出图；顶部业务菜单无前置图标、靠右排列且与 Agent、配置等工具图标保持清晰留白。
+- 首页创作灵感在 PC 横屏下应按四列展示 12 张内容，稳定铺满三行；灵感首批数据不足时应继续加载，窄屏按两列或一列响应式排列。
+- 在深色或其他浏览器主题背景下确认顶部、首页、移动菜单 Logo 及 favicon 的圆角边缘自然，刷新后不回退到旧版资源。
+# 待用户测试
+
+- 资产库应同时显示图片、视频和音频的上传素材与生成结果；图片/视频工作台生成成功后自动出现对应资产，画布上传和音频生成也应写入资产库。
+- 在资产库按“上传素材 / 生成结果”和类型筛选，打开生成结果详情应能看到提示词、模型、尺寸或质量；视频和音频应可播放、下载，并可从资产选择器再次插入画布。
+- 删除图片或视频生成记录后，资产库中仍保留对应媒体并可正常预览、下载；删除资产后，只有没有被画布、生成记录或其他资产引用的媒体才会被清理。
+- 资产库默认按创建日期倒序分组显示时间轴，最右侧可切换时间轴和宫格模式，切换不改变筛选条件；卡片右上角可快捷收藏且不会同时打开详情，收藏状态应在刷新后保留。“我的收藏”只显示主动收藏的资产，可与来源、关键词及模态组合筛选；取消收藏后应即时移出收藏列表，末页清空时分页应回退。模态默认显示“全部模态”，下拉可筛选文本、图片、视频和音频。
+- 时间轴日期应为 13px 常规字重灰色文字，小于资产卡片标题，旁边的数量为 12px；浅色和深色主题下均应保持轻量且可读。
+- 资产卡片不再显示尺寸、比例和文件大小摘要行，卡片正文保留标题、来源和类型信息；详情弹窗的提示词框应限制最大高度，超长提示词只在框内滚动，不能撑高弹窗。
+- 资产详情的创建时间与规格应以统一的 13px 小字号紧凑排列，标签与内容左对齐；时间显示本地日期和 24 小时制时分秒，规格将实际像素尺寸、已记录的质量、当前资产数量与文件大小用间隔点连接，KB 及以上保留一位小数。图片显示“1 张”，视频和音频显示“1 段”，缺失的尺寸或质量不应凭空补齐，文本不显示媒体规格；在约占弹窗 35% 的信息区内长内容可换行，来源和模型信息仍可查看。
+- 点击资产卡片应打开紧凑的左右分栏详情弹窗：桌面端弹窗最大宽度约 1280px，右侧提示词与信息区约占弹窗宽度 35%，左侧预览占其余空间并使用独立底色承载原图比例；图片等比居中完整展示，不裁切、不拉伸。右侧采用紧凑单列结构，标题、提示词、生成结果/模态标签、来源、模型、规格和创建时间依次排列，正文统一使用 13px 字号和一致行距，提示词可复制并在框内滚动；底部下载、引用、重新生成、收藏和删除操作文字统一为 12px，操作栏贴近内容且上下留白较小；这些状态仍待浏览器验收。
+- 资产详情左侧预览应使用独立底色承载素材原始比例，竖图不再在白色背景中产生明显空白；图片、视频仍需完整显示且不裁切、不拉伸。模型信息只显示真实模型名称，不显示内部渠道 ID 前缀。
+- 资产详情信息区应采用紧凑单列结构：顶部显示标题，提示词紧随其后，生成结果/上传素材、模态和自定义标签统一放在提示词框下方，来源、模型、创建时间和规格集中在底部；底部下载、引用、重新生成、收藏和删除按钮的文字统一为 12px，操作栏上下留白较小。
+- 资产详情左右区域应使用明确的 65% / 35% 百分比分栏，右侧内边距不能让提示词框和元数据显示区域明显小于 35% 区域的可用宽度。
+- 资产详情右侧信息区不应额外预留标题右侧空白；在保留 65% / 35% 分栏的同时，使用较小内边距和左侧边界，让白色信息区的实际视觉宽度与 35% 比例一致。
+- 资产详情底部操作白色区域应按下载、引用、重新生成、收藏和删除按钮的内容自适应宽度并居中显示，不应铺满整个弹窗；窄屏时允许换行。
+- 资产详情底部操作区应恢复清晰的按钮层级：下载/复制使用主按钮，其余操作使用默认描边按钮；五个按钮统一宽度并保持 12px 字号。
+- 资产详情删除按钮默认使用中性色；鼠标悬停、键盘聚焦或按下时，图标、文字和边框变红，离开交互状态后恢复中性色；点击仍打开原有删除确认弹窗。
+- 详情弹窗下载按钮旁应显示“重新生成”：图片资产带入图片工作台并立即生成，视频资产带入视频工作台并立即生成；无提示词或不支持重新生成的类型应禁用。点击弹窗遮罩区域也应关闭详情，点击内容区域不应关闭。
+- 详情弹窗应提供“引用”按钮：图片资产点击后进入图片创作区，当前图片作为参考图出现，不自动发起生成；工作台已有提示词应保留，引用动作应更新参考图列表。
+- 资产详情弹窗点击关闭按钮或弹窗外部空白遮罩区域都应关闭，点击弹窗内容区域不应关闭。
+- 资产卡片正文最多显示三行信息（标题、来源、摘要各一行），不再在卡片正文堆叠标签；查看、编辑、下载、删除和右上角收藏按钮仍可用。
+- 桌面端鼠标悬停资产卡片时应有轻微上浮、图片轻微放大、边缘高亮和柔和蓝色阴影，移出后平滑恢复；悬停收藏按钮时按钮微幅抬升并显示金色图标与浅金色光晕，收藏状态本身仍保持正确颜色。触控设备不应因 hover 样式影响点击。
+- 图片渐变阴影覆盖下半部，底部比上一版明显加深并向上淡出至透明，悬停时平滑增强，阴影层不拦截图片预览点击。未收藏时星标为黑色线框，悬停或键盘聚焦按钮时轻微抬升、显示浅金光晕与金色线框；该金色应与点击后的实心星完全一致，收藏后保持悬停也不变色。取消收藏后，仍悬停时显示金色线框，移出后恢复默认线框；深色主题的默认线框保持可读。
+
+本轮已在本地 Vite 页面看到资产页的新标题、导入按钮、并排筛选与搜索及白底效果；其余页面交由用户继续验收，尚未确认完整功能回归。
+
+- 界面统一：浅色模式下资产页、创作灵感页不再有点阵背景，图片创作采用白底分栏；主按钮为蓝紫色实底，标题与正文保持黑色，深色模式仍应清晰可读。
+- 页面层级：我的资产、创作灵感、用户管理的标题与副标题同行显示；资产筛选与搜索集中在仅用底部轻微阴影分隔的操作区，资产导入、导出和新增收进右侧更多菜单；窄屏自动换行且没有横向溢出。
+- 资产卡片：查看、编辑、复制或下载、删除仍可操作，图标按钮带提示；类型筛选与搜索组合、清空搜索、分页和导入/新增入口保持原行为，删除仍需要确认。
+- 资产页与灵感页：搜索框统一位于标题行右侧并处于同一水平层，分类/类型筛选位于下一层；资产类型筛选和更多操作在搜索下方，操作区仅保留很弱的底部渐隐分界，不应出现四周矩形阴影；两页的搜索样式、页面标题层级和横屏空间利用应保持一致。
+- 灵感页：分类在搜索下方，标签在分类下方；展开标签使用无底色弱化文字和箭头控件，分类、标签、详情和收藏仍可使用；首页品牌、创作灵感、场景三个区域保留。
+- 没有任何 AI 渠道时，从首页点击「开始图片创作」应打开配置浮窗，并显示填写接口地址、API Key、模型的引导；新增渠道后引导应立即收起。
+- 点击引导中的「新增并填写渠道」应打开现有渠道编辑抽屉，页面不应自动填入接口地址、API Key 或模型。
+- 在渠道编辑抽屉填写 Base URL 和 API Key 并离开输入框后，应自动拉取模型并选中 `gpt-image-2` 系列及 `gpt-5.6-sol`（接口未返回这些模型时不应虚构添加）；「选择模型」按钮应显示为「添加模型」，可继续补充其他模型。
+- 偏好设置中的默认生图模型应为 `gpt-image-2.5-sunburst`，默认文本模型应为 `gpt-5.6-sol`。

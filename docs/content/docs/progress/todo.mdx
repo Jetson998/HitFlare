@@ -1,0 +1,14 @@
+---
+title: TODO
+description: Planned follow-up work
+---
+
+# TODO
+
+- 根据用户对第一版实物的反馈，继续微调搜索宽度、筛选密度、按钮视觉重量和卡片文字留白；PC 横屏优先使用 1440×900 与 1920×1080 验收，竖向长屏仅作补充。
+- 完成黑白主题、生成设置弹层、真实资产状态和窄屏触控的浏览器验收；按有/无参考图及三个场景模板补齐真实 AI 渠道端到端验证。顶部 Logo 尺寸与菜单对齐已由用户验收。
+- 为创作 Agent 的多实例部署补充任务队列、任务所有权、统一恢复和共享数据库方案；当前实现仅支持单 Node 实例。
+- 为场景模板增加管理侧数据维护和版本发布流程；本期仍只读种子数据，不开放灵感上传。
+- 以 HitFlare 用户 ID 为归属，实现图片生成记录与我的资产的服务端同步；当前 Agent 参考素材已服务端持久化，图片工作台既有本地资产仍需后续统一。
+- Replace the Claude Code CLI adapter with a Claude Agent SDK adapter and improve the tool queue, following the [Local Agent Integration Plan](/docs/progress/local-agent-integration-plan).
+- Add Skill installation from web search, Skill resource-file management, and controlled local-memory persistence.

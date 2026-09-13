@@ -1,0 +1,73 @@
+---
+title: Docker Deployment
+description: Deploy Infinite Canvas with Docker Compose
+---
+
+# Docker Deployment
+
+## Start from the current source
+
+```bash
+git clone git@github.com:Jetson998/HitFlare.git
+cd infinite-canvas
+cp .env.example .env
+# Set HITFLARE_ADMIN_EMAIL and HITFLARE_ADMIN_PASSWORD in .env
+docker compose up -d --build
+```
+
+Open `http://localhost:3000` and sign in with the administrator account from `.env`.
+
+## Build locally
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+## Documentation image
+
+The documentation in `docs/` is a separate Next.js standalone application with server capabilities.
+
+```bash
+cd docs
+docker compose up -d
+```
+
+To build it from the current source:
+
+```bash
+cd docs
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+## Accounts and data
+
+The main container runs Node 24 and serves the frontend, authentication API, and template API. Public registration is disabled. The first administrator is created from these variables when the account database has no administrator:
+
+| Variable | Description |
+| --- | --- |
+| `HITFLARE_ADMIN_EMAIL` | Unique login email for the initial administrator |
+| `HITFLARE_ADMIN_USERNAME` | Display name for the initial administrator |
+| `HITFLARE_ADMIN_PASSWORD` | Initial administrator password; required for the first start |
+
+User UUIDs, emails, display names, roles, statuses, and login records are stored in SQLite on the `hitflare-data` volume. Keep that volume when recreating the container. Changing the environment password does not overwrite an existing administrator.
+
+Canvases, My Assets, generation history, AI API keys, and Base URLs are still stored in each user's browser. Server synchronization for generated content is planned separately.
+
+## Optional analytics
+
+No analytics are enabled by default. A deployment can enable GA4, Baidu Analytics, or both at runtime:
+
+| Variable | Description |
+| --- | --- |
+| `ANALYTICS_GA4_ID` | Google Analytics 4 measurement ID (`G-XXXX`) |
+| `ANALYTICS_BAIDU_ID` | Baidu site ID, the hash after `hm.js?` |
+
+```yaml
+services:
+  app:
+    environment:
+      ANALYTICS_GA4_ID: G-XXXXXXXXXX
+      ANALYTICS_BAIDU_ID: e8263761cc5c32f5f7a855b8203b965a
+```
+
+SPA route changes automatically report page views to enabled providers. Only configure analytics IDs on sites you control, and do not commit them to the repository.

@@ -1,0 +1,81 @@
+---
+title: Features
+description: Major features available in the current project
+---
+
+# Features
+
+## 品牌导航
+
+- 顶部使用本地 HitFlare 光引 Logo，图片高度 42px、上移 4px，使字标与菜单文字协调；尺寸与对齐已由用户验收。
+
+## Canvas projects
+
+- Create, rename, duplicate, delete, import, and export canvas projects.
+- Persist projects in the browser and optionally synchronize them with WebDAV.
+- Keep viewport, background, nodes, connections, and assistant sessions with each project.
+
+## Infinite canvas
+
+- Pan, zoom, reset the view, select multiple nodes, copy and paste, undo and redo.
+- Drag files onto the canvas and use lines, dots, or a blank background.
+- Export the entire canvas or selected elements with their resources.
+
+## Nodes and workflows
+
+- Text, image, video, and generation-configuration nodes.
+- Connect text prompts and reference media to generation nodes.
+- Generate or rewrite text, create images, edit images from references, and create videos.
+- Preserve original image ratios by default and organize batch results as connected nodes.
+- Record prompts, models, dimensions, quality, and references on generated nodes for retries.
+
+## AI generation
+
+- Connect to user-provided OpenAI-compatible endpoints directly from the browser.
+- Configure multiple channels, fetch or enter model names, and choose default text, image, and video models.
+- Support image count, aspect ratio, quality, transparent backgrounds, reasoning effort, and custom invocation scripts.
+- Support OpenAI-style video endpoints.
+
+## 创作 Agent
+
+- 原四阶段核心功能已由用户完成浏览器端到端验收；入口为右侧创作 Agent 面板，面板内支持新建、搜索、切换和重命名会话。
+- 会话、消息、草稿、参考素材、方案原稿与修改版本、每轮调用上下文和状态均在服务端持久化，并按登录用户和会话归属隔离。
+- 对话采用「配置与用户偏好 → 偏好设置 → 默认文本模型」及其绑定的 OpenAI 兼容渠道，由服务端调用；180 秒超时，不自动重试，失败后保留记录供用户手动重试。
+- 回复支持普通对话和可编辑的创作方案卡片；普通创作展示当前方案，提示词优化展示默认折叠的原文与展开的优化结果，支持分段、列表和保存后还原。
+- 方案主操作将最终提示词和参考图带入图片创作页，不自动生图，不携带模型、比例、清晰度或数量；Agent 不调用场景模板编译，也不执行画布操作。
+- 本轮追加的长提示词滚动与卡片底部按钮布局，仍记录于待测文档，尚未计入用户验收范围。
+
+## Canvas Agent
+
+- Connect local Codex through Canvas Agent and MCP without giving a web server direct access to browser state.
+- Read the active canvas, selection, nodes, edges, generation status, and apply structured operations.
+- Use Codex from the browser side panel with streaming responses, history, approvals, permissions, diagnostics, and local Skills.
+- Isolate active canvases and turns across multiple browser tabs.
+
+See [Codex App Plugin](/docs/overview/codex-app-plugin) for installation and usage.
+
+## Plugin system
+
+Canvas plugins can contribute node types, rendering, inspectors, serialization, migration, toolbar actions, and optional AI generation capabilities. Built-in and local plugins are managed through the canvas UI.
+
+## Prompts and assets
+
+- Use seven built-in prompt sources from the [Image Prompts](https://github.com/yukkcat/image-prompts) registry, with independent enablement, manual refresh, and scheduled refresh.
+- Add, edit, and remove custom standard JSON sources while retaining the last successful cache when refresh fails.
+- Search across enabled sources, filter by tags, inspect prompt details, copy prompts, and insert them into the canvas.
+- Store reusable images, videos, audio, and prompt assets in the browser.
+
+See [Third-party Prompt Sources](/docs/overview/third-party-prompt-repositories) for the complete built-in list.
+
+## Configuration and synchronization
+
+- Export and import channel, model, generation, prompt-source, and WebDAV settings.
+- Store application data and API credentials locally in the browser.
+- Use WebDAV for optional cross-device synchronization.
+
+## Current limitations
+
+- 现有账号服务与创作 Agent 支持服务端持久化；画布、图片工作台既有资产与生成记录仍主要保存在浏览器，不代表已实现全站云同步。
+- API Key 仍由浏览器配置保存，图片等既有请求由浏览器直连；创作 Agent 将本次选择的渠道交给服务端调用，密钥不写入会话或数据库。
+- 创作 Agent 当前支持单 Node 实例，多实例任务队列、共享数据库及统一恢复仍属后续建设。
+- Production Docker static-resource paths still require broader deployment verification.

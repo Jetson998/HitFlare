@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: infinite-canvas
+    runtime: docker
+    plan: free
+    autoDeployTrigger: off
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: HITFLARE_ADMIN_EMAIL
+        sync: false
+      - key: HITFLARE_ADMIN_USERNAME
+        value: 管理员
+      - key: HITFLARE_ADMIN_PASSWORD
+        sync: false

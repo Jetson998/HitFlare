@@ -1,0 +1,21 @@
+services:
+  app:
+    image: hitflare:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hitflare
+    ports:
+      - "3000:3000"
+    environment:
+      HITFLARE_ADMIN_EMAIL: "${HITFLARE_ADMIN_EMAIL:?set HITFLARE_ADMIN_EMAIL in .env}"
+      HITFLARE_ADMIN_USERNAME: "${HITFLARE_ADMIN_USERNAME:?set HITFLARE_ADMIN_USERNAME in .env}"
+      HITFLARE_ADMIN_PASSWORD: "${HITFLARE_ADMIN_PASSWORD:?set HITFLARE_ADMIN_PASSWORD in .env}"
+      ANALYTICS_GA4_ID: "${ANALYTICS_GA4_ID:-}"
+      ANALYTICS_BAIDU_ID: "${ANALYTICS_BAIDU_ID:-}"
+    volumes:
+      - hitflare-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  hitflare-data:
