@@ -202,6 +202,9 @@ export default {
     },
     videoWorkbench: {
         title: "视频创作台",
+        experimentalTitle: "视频创作台提示",
+        experimentalNotice: "本功能试验性质，如需使用，请联系管理员。",
+        experimentalConfirm: "我知道了",
         promptPlaceholder: "描述镜头运动、主体动作、场景氛围和画面风格",
         references: "参考图",
         videoReferences: "参考视频",
@@ -343,11 +346,15 @@ export default {
         home: "首页",
         canvas: "我的画布",
         image: "图片创作",
-        video: "视频创作台",
+        video: "视频创作",
         prompts: "创作灵感",
+        reversePrompt: "反推提示词",
         assets: "我的资产",
         config: "配置",
         users: "用户管理",
+    },
+    reversePrompt: {
+        title: "反推提示词", subtitle: "上传图片，提取可复用的绘图提示词", inputTitle: "参考图片", inputHint: "支持点击选择、拖放或在此区域粘贴一张图片", dropImage: "将图片拖放到这里", choose: "点击选择", paste: "粘贴图片", reading: "正在读取图片…", imageOnly: "请选择图像文件", readFailed: "图片读取失败，请重新选择", removeImage: "移除图片", modeLabel: "反推模式", modelLabel: "分析模型", modelPlaceholder: "选择已配置的分析模型", noModel: "暂无可用分析模型", configure: "去配置模型", ready: "图片已准备好，可以开始反推", needImage: "请先上传一张图片", start: "开始反推", stop: "停止生成", thinking: "正在思考与生成中，请稍候…", resultTitle: "反推结果", previousTitle: "上次结果", itemCount: "{{count}} 条", emptyResult: "上传图片并开始反推，结果会显示在这里", noContent: "暂无内容", copied: "已复制", copy: "复制", copyFailed: "复制失败，请手动选择文字复制", failed: "反推失败，请检查配置后重试", emptyResponse: "模型没有返回有效内容"
     },
     topNav: {
         more: "更多操作",

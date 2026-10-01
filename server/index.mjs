@@ -61,7 +61,7 @@ export async function createApp({ staticDir = dist, dataDir = process.env.HITFLA
             if (!["GET", "HEAD"].includes(req.method)) return json(res, 405, { error: "请求方法不支持" });
             let decoded;
             try { decoded = decodeURIComponent(path); } catch { throw new InputError("资源路径无效"); }
-            const spa = /^\/(?:login|image|video|assets|prompts|config|admin\/users|canvas(?:\/[^/]+)?)?\/?$/.test(decoded);
+            const spa = /^\/(?:login|image|video|assets|prompts|reverse-prompt|config|admin\/users|canvas(?:\/[^/]+)?)?\/?$/.test(decoded);
             const file = resolve(staticDir, spa ? "index.html" : `.${decoded}`);
             if (!file.startsWith(resolve(staticDir) + sep)) return json(res, 404, { error: "资源不存在" });
             let data;

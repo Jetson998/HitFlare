@@ -40,19 +40,30 @@ export async function uploadImage(input: string | Blob, options?: ImageReadOptio
     return storeImage(blob, options);
 }
 
-async function storeImage(blob: Blob, options?: ImageReadOptions): Promise<UploadedImage> {
-    const storageKey = `image:${nanoid()}`;
+/** Read a local image without adding it to the shared asset store. The caller owns the object URL. */
+export async function readImageBlob(blob: Blob, options?: ImageReadOptions): Promise<UploadedImage> {
     const url = URL.createObjectURL(blob);
     try {
         const meta = await loadImageMeta(url, options);
         if (!meta) throw new Error(i18n.t("common.imageReadFailed"));
         throwIfAborted(options?.signal);
-        await store.setItem(storageKey, blob);
-        throwIfAborted(options?.signal);
-        objectUrls.set(storageKey, url);
-        return { url, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type.startsWith("image/") ? blob.type : "" };
+        return { url, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type.startsWith("image/") ? blob.type : "" };
     } catch (error) {
         URL.revokeObjectURL(url);
+        throw error;
+    }
+}
+
+async function storeImage(blob: Blob, options?: ImageReadOptions): Promise<UploadedImage> {
+    const storageKey = `image:${nanoid()}`;
+    const image = await readImageBlob(blob, options);
+    try {
+        await store.setItem(storageKey, blob);
+        throwIfAborted(options?.signal);
+        objectUrls.set(storageKey, image.url);
+        return { ...image, storageKey };
+    } catch (error) {
+        URL.revokeObjectURL(image.url);
         await store.removeItem(storageKey).catch(() => undefined);
         throw error;
     }

@@ -13,6 +13,7 @@ import ImagePage from "@/pages/image";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import PromptsPage from "@/pages/prompts";
+import ReversePromptPage from "@/pages/reverse-prompt";
 import VideoPage from "@/pages/video";
 
 export const router = createBrowserRouter([
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
                     { path: "/video", element: <VideoPage /> },
                     { path: "/assets", element: <AssetsPage /> },
                     { path: "/prompts", element: <PromptsPage /> },
+                    { path: "/reverse-prompt", element: <ReversePromptPage /> },
                     { path: "/canvas", element: <CanvasPage /> },
                     { path: "/canvas/:id", element: <CanvasProjectPage /> },
                     { path: "/config", element: <ConfigPage /> },

@@ -59,7 +59,6 @@ export function GenerationSettings({ disabled = false }: { disabled?: boolean })
                         onChange={value => updateConfig("imageModel", value)}
                         capability="image"
                         fullWidth
-                        showChannelName={false}
                         onMissingConfig={() => {
                             setOpen(false);
                             openConfigDialog(false);

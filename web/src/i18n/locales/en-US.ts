@@ -202,6 +202,9 @@ export default {
     },
     videoWorkbench: {
         title: "Video Studio",
+        experimentalTitle: "Video Studio notice",
+        experimentalNotice: "This is an experimental feature. Please contact an administrator if you need to use it.",
+        experimentalConfirm: "I understand",
         promptPlaceholder: "Describe camera movement, subject action, atmosphere, and visual style",
         references: "Reference images",
         videoReferences: "Reference videos",
@@ -343,11 +346,15 @@ export default {
         home: "Home",
         canvas: "My Canvases",
         image: "Image Studio",
-        video: "Video Studio",
+        video: "Video Creation",
         prompts: "Creative Inspiration",
+        reversePrompt: "Reverse Prompt",
         assets: "My Assets",
         config: "Settings",
         users: "User Management",
+    },
+    reversePrompt: {
+        title: "Reverse Prompt", subtitle: "Upload an image and extract a reusable image prompt", inputTitle: "Reference image", inputHint: "Choose, drag, or paste one image here", dropImage: "Drop an image here", choose: "Choose image", paste: "Paste image", reading: "Reading image…", imageOnly: "Choose an image file", readFailed: "Could not read the image. Choose another file.", removeImage: "Remove image", modeLabel: "Reverse mode", modelLabel: "Analysis model", modelPlaceholder: "Choose a configured analysis model", noModel: "No analysis models configured", configure: "Configure model", ready: "Image ready. Start when you are ready.", needImage: "Upload an image to begin", start: "Reverse prompt", stop: "Stop generation", thinking: "Thinking and generating…", resultTitle: "Reverse result", previousTitle: "Previous result", itemCount: "{{count}} prompts", emptyResult: "Upload an image and start to see the result here", noContent: "No content", copied: "Copied", copy: "Copy", copyFailed: "Copy failed. Select the text manually.", failed: "Reverse prompt failed. Check your configuration and retry.", emptyResponse: "The model returned no usable content"
     },
     topNav: {
         more: "More actions",

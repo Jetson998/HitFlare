@@ -20,6 +20,7 @@ import type { CompiledTemplate } from "@/services/api/scene-templates";
 import { SceneTemplatePanel, type TemplateGeneration } from "./scene-template-panel";
 import { GenerationSettings } from "./generation-settings";
 import { useUserStore } from "@/stores/use-user-store";
+import { GenerationHistoryPanel } from "@/components/generation-history-panel";
 
 type GeneratedImage = {
     id: string;
@@ -489,11 +490,11 @@ export default function ImagePage() {
                     </div>
                 </section>
                 <aside data-testid="generation-history" className="thin-scrollbar hidden min-h-0 overflow-y-auto border-l border-border p-5 @min-[1100px]/workbench:block">
-                    <LogPanel
-                        logs={logs}
-                        activeLogId={previewLog?.id}
-                        onPreviewLog={(log) => void previewGenerationLog(log)}
-                    />
+                        <GenerationHistoryPanel
+                            logs={logs}
+                            activeLogId={previewLog?.id}
+                            onSelectLog={(log) => void previewGenerationLog(log as GenerationLog)}
+                        />
                 </aside>
             </main>
             <input
@@ -508,10 +509,10 @@ export default function ImagePage() {
                 }}
             />
             <Drawer title={t("workbench.logs")} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
-                <LogPanel
+                <GenerationHistoryPanel
                     logs={logs}
                     activeLogId={previewLog?.id}
-                    onPreviewLog={(log) => void previewGenerationLog(log)}
+                    onSelectLog={(log) => void previewGenerationLog(log as GenerationLog)}
                 />
             </Drawer>
         </div>
@@ -598,60 +599,6 @@ function FailedImageCard({ error, onRetry }: { error: string; onRetry: () => voi
 
 function updateResultAt(results: GenerationResult[], index: number, next: Partial<GenerationResult>) {
     return results.map((item, itemIndex) => (itemIndex === index ? { ...item, ...next } : item));
-}
-
-function LogPanel({
-    logs,
-    activeLogId,
-    onPreviewLog,
-}: {
-    logs: GenerationLog[];
-    activeLogId?: string;
-    onPreviewLog: (log: GenerationLog) => void;
-}) {
-    const { t } = useTranslation();
-
-    return (
-        <>
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-base font-semibold">{t("workbench.logs")}</h2>
-                </div>
-                <Tag className="m-0">{logs.length}</Tag>
-            </div>
-            <div className="space-y-3">
-                {logs.map((log) => (
-                    <LogCard
-                        key={log.id}
-                        log={log}
-                        active={activeLogId === log.id}
-                        onClick={() => onPreviewLog(log)}
-                    />
-                ))}
-                {!logs.length ? <div className="flex min-h-48 items-center justify-center text-center text-sm text-stone-500 dark:text-stone-400">{t("workbench.noLogs")}</div> : null}
-            </div>
-        </>
-    );
-}
-
-function LogCard({ log, active, onClick }: { log: GenerationLog; active: boolean; onClick: () => void }) {
-    const { t } = useTranslation();
-    const thumbnails = (log.thumbnails || []).filter(Boolean).slice(0, 4);
-
-    return (
-        <div className="relative min-w-0">
-            <button type="button" onClick={onClick} className={`block w-full min-w-0 rounded-xl border p-3 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-border bg-background hover:bg-stone-50 dark:hover:bg-stone-900"}`}>
-                <div className="truncate text-sm font-semibold leading-5" title={log.title}>{log.title}</div>
-                {thumbnails.length ? <div className="mt-2 flex gap-1 overflow-hidden">{thumbnails.map((image, index) => <img key={`${log.id}-${index}`} src={image} alt="" className="size-10 shrink-0 rounded-md object-cover" />)}</div> : null}
-                <div className="mt-2 flex flex-wrap items-center gap-1">
-                    <Tag className="!m-0" color="blue">{t("workbench.successCount", { count: log.successCount ?? log.imageCount })}</Tag>
-                    {log.failCount ? <Tag className="!m-0" color="red">{t("workbench.failCount", { count: log.failCount })}</Tag> : null}
-                    <span className="text-xs text-stone-500 dark:text-stone-400">{t("workbench.itemCount", { count: log.imageCount })} · {formatDuration(log.durationMs)}</span>
-                </div>
-                <div className="mt-2 break-words text-xs text-stone-500 dark:text-stone-400">{log.time}</div>
-            </button>
-        </div>
-    );
 }
 
 async function readStoredLogs() {

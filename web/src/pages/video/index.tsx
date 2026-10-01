@@ -95,6 +95,7 @@ export default function VideoPage() {
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [experimentalNoticeOpen, setExperimentalNoticeOpen] = useState(true);
     const [referenceDragTarget, setReferenceDragTarget] = useState(false);
     const [autoRunToken, setAutoRunToken] = useState(0);
     const videoCommand = useWorkbenchAgentStore((state) => state.videoCommand);
@@ -498,6 +499,17 @@ export default function VideoPage() {
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
+            <Modal
+                title={t("videoWorkbench.experimentalTitle")}
+                open={experimentalNoticeOpen}
+                centered
+                onCancel={() => setExperimentalNoticeOpen(false)}
+                onOk={() => setExperimentalNoticeOpen(false)}
+                okText={t("videoWorkbench.experimentalConfirm")}
+                footer={(_, { OkBtn }) => <OkBtn />}
+            >
+                {t("videoWorkbench.experimentalNotice")}
+            </Modal>
             <Modal title={t("workbench.deleteLogs")} open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={deleteSelectedLogs} okText={t("common.delete")} okButtonProps={{ danger: true }} cancelText={t("common.cancel")}>
                 {t("workbench.deleteLogsConfirm", { count: selectedLogIds.length })}
             </Modal>

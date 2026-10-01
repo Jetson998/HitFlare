@@ -15,6 +15,13 @@
 
 ## 开发与数据
 
+- [HitFlare 服务化开发排期与权限、用户体系对接方案](hitflare/SERVICE_COLLABORATION_PERMISSION_INTEGRATION_PLAN.md)
+- [HitFlare 服务化与权限体系验收测试用例](hitflare/SERVICE_AND_PERMISSION_ACCEPTANCE_TEST_CASES.md)
+- [HitFlare 后端需求清单：权限依赖与用户数据服务端化](hitflare/BACKEND_ASSET_CANVAS_SERVICE_REQUIREMENTS.md)
+- [HitFlare 多租户多用户、数据隔离与权限方案](hitflare/MULTI_TENANT_USER_DATA_ISOLATION_PLAN.md)
+- [HitFlare 反推提示词功能方案](hitflare/REVERSE_PROMPT_FEATURE_PLAN.md)
+- [HitFlare 视觉拆解与反推提示词升级方案（图片优先）](hitflare/VISUAL_ANALYSIS_AND_REVERSE_PROMPT_UPGRADE_PLAN.md)
+- [图片视觉分析服务前端接入](hitflare/VISUAL_ANALYSIS_FRONTEND_INTEGRATION.md)
 - [本地开发](/zh-CN/docs/development/local-development)
 - [画布数据结构](/zh-CN/docs/development/canvas-data-structure)
 

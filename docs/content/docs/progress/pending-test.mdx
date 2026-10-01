@@ -7,6 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- 图片视觉分析服务接口：页面接入 `visual-analysis` 服务后，分别验证分析拆解、还原提示词和风格提取；确认有效分析复用、模型/图片/账号切换时的过期回调丢弃、分析修正后的 revision 与旧提示词待更新、流式提示词/停止/失败部分结果、刷新中断恢复、localforage 用户隔离，以及真实图片下的 observed/uncertain 判断和风格模板占位符。服务层未执行构建、类型检查或真实模型请求。
+
+- 反推提示词简洁布局：移除模式页签，使用「上传参考图 → 选择分析模型 → 开始反推 → 复制结果」单一流程。结果区仅显示标题、提示词正文和复制操作，复制按钮与标题同一行，正文直接位于标题下方；短结果按内容高度展示，长结果在框内滚动，不展示完成状态、模型渠道及模式名。参考图片标题下不再显示操作说明，模型下不再显示准备状态提示。桌面左栏的图片区域独立滚动，模型与开始/停止按钮固定在栏底，在上传图片、出现错误和缩短窗口高度时仍应首屏可见。
+- 反推参考图：标题右侧的「剪切板 / 上传」、虚线边框、图片角标及右上角删除按钮应与 `/image` 一致；单图预览放大并保留原始比例，移除图片下方的文件名和叉号。删除按钮悬停显示半透明深色底和白色垃圾桶图标，键盘聚焦时显示，触屏设备保持可操作；删除后回到上传空状态。上传、拖放、区域内粘贴及剪切板按钮均只取第一张图片，反推过程中禁用图片变更。
+- 图片创作生成设置：打开 `/image` 的生成设置，当前模型摘要和模型下拉选项应显示“模型名称（渠道名称）”；生成设置外的操控区仍只显示模型名称。切换不同渠道的同名模型时，渠道名称应随选择同步更新，长名称不应造成布局溢出。
+- 反推提示词：导航中的「反推提示词」应紧跟「创作灵感」；验证分析模型选择、配置缺失提示、流式文本、停止后保留部分结果、失败状态、复制结果以及生成记录点击恢复。生成记录应直接复用图片创作的记录组件，显示相同的标题、数量、状态、耗时、时间和选中样式，仅将数量单位显示为“条”。统一反推请求描述参考图可见的主体、构图、风格、光线、色彩、材质与氛围，不提供风格提取或画面还原模式。刷新后应恢复当前账号的图片草稿、模型和历史记录，但结果区保持为空；切换账号不能看到上一账号的数据。检查 1440×900、1920×1080 和窄屏下长提示词区域可滚动且控件不重叠，页面保持左中右三栏、白色工作区、细分隔线、16px 标题、13px 正文、主题按钮和无大阴影卡片。本次布局调整后的浅色/深色主题、参考图交互、结果滚动和刷新恢复仍需用户确认；真实模型联调结果和上游视觉质量未在本次修改中验证。
+- 导航与视频创作台：桌面导航和移动菜单应按“首页、图片创作、视频创作、创作灵感、反推提示词、我的资产、用户管理”排列；桌面“视频创作”和“创作灵感”之间不显示竖线，保持常规菜单间距，移动菜单保留“视频创作”后的横向分组分隔；进入 `/video` 时菜单显示“视频创作”，页面标题仍显示“视频创作台”。从菜单进入、直接打开或刷新 `/video` 时应显示“本功能试验性质，如需使用，请联系管理员。”提示。点击“我知道了”、关闭按钮、遮罩或按 Esc 后可继续使用原有工作台，离开后重新进入会再次提示；中英文及浅色、深色主题应正常显示。原有视频生成操作仍待用户验收。
 - HitFlare UI V2 first implementation: common pages and navigation use the same fluid side gutters without a universal max-width; wide screens expand grids, tables, and image results. PC landscape is the primary review target. Verify `/`, `/assets`, `/prompts`, `/config`, `/image`, and `/admin/users` at 1440×900 and 1920×1080, including left/right alignment, page heading hierarchy, filter/search rows, 32px desktop controls, primary/secondary/light button hierarchy, and no horizontal overflow. Verify the image workbench keeps only 图片生成 / 场景模板, folds generation settings into its summary and dialog, and uses the three-column desktop layout with generation history on the right. Verify the Agent overlay does not compress a narrow main workspace into an unusable vertical layout. The current browser pass observed the image template page in a landscape desktop window; full 1920×1080, dark-theme, touch, real-generation, and all dialog states remain to be checked by the user.
 - Homepage first-screen proportions: at PC landscape sizes, the brand guidance area should fill the available viewport below the 56px top navigation, and `YOUR CREATIVE WORKSPACE` should present its title, Agent interaction example, and result preview within one viewport. Verify at 1440×900 and 1920×1080, then check that the mobile layout remains content-driven without excessive blank space.
 - Creative Inspiration layout restoration: the main page should use the open-source content flow, keep the current title and subtitle position and size, show category and tag filters in the content area, show the first three tag rows by default, and expand the remaining tags into an independently scrollable area. `scene-template` must be a tag rather than a category, while selected-condition clearing and result counts remain available. The expand control should sit at the upper-right of the tag area with one arrow icon and a readable click target. Verify the prompt selection dialog keeps real categories and tags consistent.
@@ -133,7 +140,7 @@ The Chinese version contains the complete item-by-item acceptance checklist.
 
 - 将浏览器主题切换为浅色后刷新，确认图片页和首页保持白色背景、文本和弹层具有足够对比度；已保存的深色偏好仍应能够手动切回。
 - `/image` 顶部只显示“图片生成”和“场景模板”两个一级页签；图片生成页统一使用提示词和可选参考图，桌面端生成记录位于结果右侧，窄屏改用抽屉；生成记录不显示新建、全选、删除按钮或记录选择框，只支持记录浏览与回看；参考图删除按钮在悬停或键盘聚焦时应以半透明深色叠层和白色图标清晰显示，触屏设备保持可操作。
-- 主导航只显示五项；`/video`、`/canvas` 和旧画布链接仍能直接打开；顶部和移动端使用本地 `/brand/` Logo。
+- 主导航按上述七项顺序展示，其中“用户管理”仅管理员可见；`/canvas` 和旧画布链接仍能直接打开；顶部和移动端使用本地 `/brand/` Logo。
 - 场景模板列表能加载 `tpl_bg`、`tpl_model`、`tpl_poster`；进入任一场景的配置工作区后，标题下不再显示说明副标题；必填素材、可选素材和变量校验正确，参考图支持拖拽、粘贴、上传和从我的资产选择；“补充提示词”应出现在素材与变量下方并进入编译结果；确认生成后结果进入资产和生成记录。
 - 创作灵感中“场景模板”应作为 `scene-template` 标签显示，并能从灵感详情跳转到对应模板配置页；外部提示词源刷新失败时不应阻塞本地模板。
 - 使用真实用户配置的 AI 渠道分别验证文生图、图生图、结果保存、下载、再次作为参考图和失败重试。本地自动测试不包含付费 AI 请求。
