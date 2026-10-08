@@ -36,6 +36,14 @@ description: Major features available in the current project
 - Support image count, aspect ratio, quality, transparent backgrounds, reasoning effort, and custom invocation scripts.
 - Support OpenAI-style video endpoints.
 
+## 反推提示词
+
+- 上传一张参考图并选择支持视觉输入的文本模型，由服务器执行图片观察与纯文本精修两轮请求；原图只发送给首轮，不额外调用风格模型。
+- 首轮在同一次请求中逐步展示已收到的风格字段和提示词初稿，完整分析通过结构与事实引用校验后发布正式分析；首轮结构修复与渐进展示的核心链路已由用户确认验收通过。
+- 结果包含画面提示词、媒介、构图、光线、色彩、材质、氛围与文字版式；画面事实和证据按维度合并，收纳在折叠的分析详情中。
+- 已创建任务的参考图、分析、预览和结果按登录用户保存在服务器。刷新、离开菜单或关闭浏览器后可从右侧生成记录恢复；明确点击停止才终止任务。
+- 首轮未校验预览与正式结果分别标记；失败、停止或服务中断保留已有内容，第二轮失败时保留首轮完整草稿，不能将回退草稿显示成精修成功。
+
 ## 创作 Agent
 
 - 原四阶段核心功能已由用户完成浏览器端到端验收；入口为右侧创作 Agent 面板，面板内支持新建、搜索、切换和重命名会话。
@@ -75,7 +83,7 @@ See [Third-party Prompt Sources](/docs/overview/third-party-prompt-repositories)
 
 ## Current limitations
 
-- 现有账号服务与创作 Agent 支持服务端持久化；画布、图片工作台既有资产与生成记录仍主要保存在浏览器，不代表已实现全站云同步。
-- API Key 仍由浏览器配置保存，图片等既有请求由浏览器直连；创作 Agent 将本次选择的渠道交给服务端调用，密钥不写入会话或数据库。
-- 创作 Agent 当前支持单 Node 实例，多实例任务队列、共享数据库及统一恢复仍属后续建设。
+- 现有账号服务、创作 Agent 与反推任务支持服务端持久化；画布、图片工作台既有资产与生成记录仍主要保存在浏览器，不代表已实现全站云同步。
+- API Key 仍由浏览器配置保存，图片等既有请求由浏览器直连；创作 Agent 与反推任务将本次选择的渠道交给服务端调用，密钥不写入会话或任务数据库。
+- 创作 Agent 与反推任务当前支持单 Node 实例，多实例任务队列、共享数据库及统一恢复仍属后续建设；反推服务重启后未完成任务标记为中断，不自动续跑或重复付费请求。
 - Production Docker static-resource paths still require broader deployment verification.

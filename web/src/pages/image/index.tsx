@@ -19,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import type { CompiledTemplate } from "@/services/api/scene-templates";
 import { SceneTemplatePanel, type TemplateGeneration } from "./scene-template-panel";
 import { GenerationSettings } from "./generation-settings";
+import { WorkbenchActionBar } from "@/components/workbench-action-bar";
 import { useUserStore } from "@/stores/use-user-store";
 import { GenerationHistoryPanel } from "@/components/generation-history-panel";
 
@@ -454,12 +455,12 @@ export default function ImagePage() {
 
                         </div>}
 
-                        {activeWorkbenchTab === "generate" ? <div className="mt-auto space-y-3 pt-6">
-                            <GenerationSettings disabled={running} />
-                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} loading={running} disabled={!canGenerate || running} onClick={() => void generate()}>
-                                {t("workbench.generate")}
-                            </Button>
-                        </div> : null}
+                        {activeWorkbenchTab === "generate" ? (
+                            <WorkbenchActionBar
+                                controls={<GenerationSettings disabled={running} />}
+                                action={{ label: t("workbench.generate"), icon: <Sparkles className="size-4" />, loading: running, disabled: !canGenerate || running, onClick: () => void generate() }}
+                            />
+                        ) : null}
                     </div>
 
                     <div data-testid="generation-results" className="thin-scrollbar min-w-0 p-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto">

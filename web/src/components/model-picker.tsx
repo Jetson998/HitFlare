@@ -16,14 +16,15 @@ type ModelPickerProps = {
     fullWidth?: boolean;
     placeholder?: string;
     showChannelName?: boolean;
+    disabled?: boolean;
     onMissingConfig?: () => void;
 };
 
-export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, showChannelName = true, onMissingConfig }: ModelPickerProps) {
+export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, showChannelName = true, disabled = false, onMissingConfig }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
     const [open, setOpen] = useState(false);
-    const options = useMemo(() => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, value]);
+    const options = useMemo(() => Array.from(new Set([...(config.channelMode === "local" && (!capability || !config.channels.length) ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, value]);
     const current = value || "";
     const pickerPlaceholder = placeholder || t("settingsPanels.model.select");
     const getModelLabel = (model: string) => showChannelName ? modelOptionLabel(config, model) : modelOptionName(model);
@@ -38,6 +39,7 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
 
     return (
         <Select
+            disabled={disabled}
             open={open}
             value={current}
             onOpenChange={(nextOpen) => {
@@ -57,6 +59,7 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
                 title={current ? getModelLabel(current) : pickerPlaceholder}
+                disabled={disabled}
             >
                 <ModelIcon model={current} />
                 <span className="canvas-model-picker-text min-w-0 flex-1 truncate text-left">{current ? getModelLabel(current) : pickerPlaceholder}</span>

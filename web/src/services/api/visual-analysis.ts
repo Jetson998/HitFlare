@@ -8,10 +8,24 @@ import { modelOptionLabel, resolveModelRequestConfig, resolveModelScript, select
 import { useUserStore } from "@/stores/use-user-store";
 import { requestImageQuestion, type AiTextMessage } from "./image";
 import {
-    createVisualAnalysis, parseVisualObservation, visualAnalysisSchema, visualPromptIssues, visualSourceSchema,
-    VisualAnalysisError, VISUAL_ANALYSIS_RULES_VERSION, VISUAL_PROMPT_RULES_VERSION,
-    type VisualAnalysis, type VisualAnalysisEvent, type VisualImageSource, type VisualModelIdentity,
-    type VisualPrompt, type VisualPromptTask, type VisualRequestOptions, type VisualRunContext, type VisualStage, type VisualTask,
+    createVisualAnalysis,
+    parseVisualObservation,
+    visualAnalysisSchema,
+    visualPromptIssues,
+    visualSourceSchema,
+    VisualAnalysisError,
+    VISUAL_ANALYSIS_RULES_VERSION,
+    VISUAL_PROMPT_RULES_VERSION,
+    type VisualAnalysis,
+    type VisualAnalysisEvent,
+    type VisualImageSource,
+    type VisualModelIdentity,
+    type VisualPrompt,
+    type VisualPromptTask,
+    type VisualRequestOptions,
+    type VisualRunContext,
+    type VisualStage,
+    type VisualTask,
 } from "../visual-analysis/contract";
 import { buildObservationUserPrompt, buildPromptSystemPrompt, buildPromptUserPrompt, VISUAL_ANALYSIS_SYSTEM_PROMPT } from "../visual-analysis/rules";
 
@@ -67,7 +81,15 @@ async function resolveVisualModel(config: AiConfig, model: string) {
     const requestConfig = { ...structuredClone(config), model: value };
     const resolved = resolveModelRequestConfig(requestConfig, value);
     if (!resolved.baseUrl.trim() || !resolved.apiKey.trim()) throw new VisualAnalysisError("INVALID_MODEL", "所选渠道缺少接口地址或 API Key", { stage: "observing" });
-    const settings = JSON.stringify({ model: value, baseUrl: resolved.baseUrl, apiKey: resolved.apiKey, apiFormat: resolved.apiFormat, systemPrompt: resolved.systemPrompt, reasoningEffort: resolved.reasoningEffort, script: resolveModelScript(requestConfig, value) });
+    const settings = JSON.stringify({
+        model: value,
+        baseUrl: resolved.baseUrl,
+        apiKey: resolved.apiKey,
+        apiFormat: resolved.apiFormat,
+        systemPrompt: resolved.systemPrompt,
+        reasoningEffort: resolved.reasoningEffort,
+        script: resolveModelScript(requestConfig, value),
+    });
     const identity: VisualModelIdentity = { value, label: modelOptionLabel(requestConfig, value), settingsHash: await sha256(new TextEncoder().encode(settings).buffer) };
     return { config: requestConfig, identity };
 }
@@ -117,8 +139,14 @@ function createRequestGuard(source: VisualImageSource, options: VisualRequestOpt
         }
         assertNotAborted(controller.signal, stage);
     };
-    const emit = (event: VisualAnalysisEvent) => { check(); options.onEvent?.(event); };
-    const setStage = (value: VisualStage) => { stage = value; emit({ type: "stage", stage, ...context }); };
+    const emit = (event: VisualAnalysisEvent) => {
+        check();
+        options.onEvent?.(event);
+    };
+    const setStage = (value: VisualStage) => {
+        stage = value;
+        emit({ type: "stage", stage, ...context });
+    };
     return {
         context,
         signal: controller.signal,
@@ -127,11 +155,18 @@ function createRequestGuard(source: VisualImageSource, options: VisualRequestOpt
         setStage,
         error(error: unknown, extra: { partialText?: string; rawAnalysis?: string; analysis?: VisualAnalysis; output?: VisualPrompt } = {}) {
             const details = error instanceof VisualAnalysisError ? error.details : {};
-            try { check(); } catch (guardError) { error = guardError; }
+            try {
+                check();
+            } catch (guardError) {
+                error = guardError;
+            }
             const code = error instanceof VisualAnalysisError ? error.code : "REQUEST_FAILED";
             return new VisualAnalysisError(code, error instanceof Error ? error.message : "模型请求失败", { ...details, ...extra, stage, context: { ...context } });
         },
-        dispose() { unsubscribe(); options.signal.removeEventListener("abort", abort); },
+        dispose() {
+            unsubscribe();
+            options.signal.removeEventListener("abort", abort);
+        },
     };
 }
 
@@ -146,22 +181,47 @@ async function prepareSource(source: VisualImageSource, guard: RequestGuard) {
 }
 
 function imageMessages(system: string, user: string, dataUrl: string): AiTextMessage[] {
-    return [{ role: "system", content: system }, { role: "user", content: [{ type: "text", text: user }, { type: "image_url", image_url: { url: dataUrl } }] }];
+    return [
+        { role: "system", content: system },
+        {
+            role: "user",
+            content: [
+                { type: "text", text: user },
+                { type: "image_url", image_url: { url: dataUrl } },
+            ],
+        },
+    ];
 }
 
-async function requestText(config: AiConfig, messages: AiTextMessage[], guard: RequestGuard, onText?: (text: string) => void) {
+function textMessages(system: string, user: string): AiTextMessage[] {
+    return [
+        { role: "system", content: system },
+        { role: "user", content: user },
+    ];
+}
+
+async function requestText(config: AiConfig, messages: AiTextMessage[], guard: RequestGuard, onText?: (text: string) => void, stage: VisualStage = "observing") {
     let partialText = "";
     const noContent = i18n.t("apiErrors.noContent");
     try {
         guard.check();
-        const answer = await requestImageQuestion(config, messages, (value) => {
-            try { guard.check(); } catch { return; }
-            if (value === noContent) return;
-            partialText = value;
-            onText?.(value);
-        }, { signal: guard.signal });
+        const answer = await requestImageQuestion(
+            config,
+            messages,
+            (value) => {
+                try {
+                    guard.check();
+                } catch {
+                    return;
+                }
+                if (value === noContent) return;
+                partialText = value;
+                onText?.(value);
+            },
+            { signal: guard.signal },
+        );
         guard.check();
-        if (!answer.trim() || answer === noContent) throw new VisualAnalysisError("EMPTY_RESPONSE", "模型没有返回有效内容", { stage: "observing" });
+        if (!answer.trim() || answer === noContent) throw new VisualAnalysisError("EMPTY_RESPONSE", "模型没有返回有效内容", { stage });
         return answer;
     } catch (error) {
         throw guard.error(error, { partialText });
@@ -179,18 +239,43 @@ async function observe(config: AiConfig, source: VisualImageSource, identity: Vi
     return analysis;
 }
 
-async function generate(config: AiConfig, source: VisualImageSource, analysis: VisualAnalysis, task: VisualPromptTask, identity: VisualModelIdentity, dataUrl: string, guard: RequestGuard) {
+async function generate(config: AiConfig, source: VisualImageSource, analysis: VisualAnalysis, task: VisualPromptTask, identity: VisualModelIdentity, guard: RequestGuard) {
     if (!analysisMatchesSource(analysis, source)) throw new VisualAnalysisError("ANALYSIS_STALE", "这份分析不属于当前图片或规则版本，请重新分析", { stage: "generating" });
     guard.context.analysisId = analysis.analysisId;
     guard.context.analysisRevision = analysis.revision;
-    let output: VisualPrompt = { outputId: nanoid(), ownerUserId: source.ownerUserId, sourceId: source.sourceId, analysisId: analysis.analysisId, analysisRevision: analysis.revision, task, model: identity, rulesVersion: VISUAL_PROMPT_RULES_VERSION, modelText: "", editedText: null, status: "generating", issues: [], updatedAt: Date.now() };
+    // Keep the observation draft visible as a fallback while the text-only refinement runs.
+    const draftText = analysis.reversePromptDraft.text;
+    let refinementText = "";
+    let output: VisualPrompt = {
+        outputId: nanoid(),
+        ownerUserId: source.ownerUserId,
+        sourceId: source.sourceId,
+        analysisId: analysis.analysisId,
+        analysisRevision: analysis.revision,
+        task,
+        model: identity,
+        rulesVersion: VISUAL_PROMPT_RULES_VERSION,
+        modelText: draftText,
+        editedText: null,
+        status: "generating",
+        issues: [],
+        updatedAt: Date.now(),
+    };
     try {
         guard.setStage("generating");
         guard.emit({ type: "prompt", output: structuredClone(output), ...guard.context });
-        const raw = await requestText(config, imageMessages(buildPromptSystemPrompt(task), buildPromptUserPrompt(task, analysis), dataUrl), guard, (value) => {
-            output = { ...output, modelText: value, updatedAt: Date.now() };
-            guard.emit({ type: "prompt", output: structuredClone(output), ...guard.context });
-        });
+        const raw = await requestText(
+            config,
+            textMessages(buildPromptSystemPrompt(), buildPromptUserPrompt(analysis)),
+            guard,
+            (value) => {
+                if (!value.trim()) return;
+                refinementText = value;
+                output = { ...output, modelText: value, updatedAt: Date.now() };
+                guard.emit({ type: "prompt", output: structuredClone(output), ...guard.context });
+            },
+            "generating",
+        );
         guard.setStage("validating-prompt");
         const issues = visualPromptIssues(task, raw);
         output = { ...output, modelText: raw.trim(), status: issues.length ? "needs-edit" : "completed", issues, updatedAt: Date.now() };
@@ -198,20 +283,19 @@ async function generate(config: AiConfig, source: VisualImageSource, analysis: V
         return output;
     } catch (error) {
         const normalized = guard.error(error, { analysis });
-        output = { ...output, status: ["ABORTED", "OWNER_CHANGED", "STALE_RUN"].includes(normalized.code) ? "stopped" : "failed", issues: [normalized.message], updatedAt: Date.now() };
-        throw guard.error(normalized, { analysis, output, partialText: output.modelText });
+        output = { ...output, modelText: draftText || output.modelText, status: ["ABORTED", "OWNER_CHANGED", "STALE_RUN"].includes(normalized.code) ? "stopped" : "failed", issues: [normalized.message], updatedAt: Date.now() };
+        throw guard.error(normalized, { analysis, output, partialText: refinementText });
     }
 }
 
-async function execute<T>(config: AiConfig, source: VisualImageSource, model: string, options: VisualRequestOptions, operation: (source: VisualImageSource, selected: Awaited<ReturnType<typeof resolveVisualModel>>, dataUrl: string, guard: RequestGuard) => Promise<T>) {
+async function execute<T>(config: AiConfig, source: VisualImageSource, model: string, options: VisualRequestOptions, operation: (source: VisualImageSource, selected: Awaited<ReturnType<typeof resolveVisualModel>>, guard: RequestGuard) => Promise<T>) {
     if (!options.runId.trim()) throw new VisualAnalysisError("STALE_RUN", "本次操作缺少 runId", { stage: "reading-image" });
     const guard = createRequestGuard(source, options);
     try {
         guard.check();
         const snapshot = visualSourceSchema.parse(source);
         const selected = await resolveVisualModel(config, model);
-        const dataUrl = await prepareSource(snapshot, guard);
-        const result = await operation(snapshot, selected, dataUrl, guard);
+        const result = await operation(snapshot, selected, guard);
         guard.setStage("completed");
         return result;
     } catch (error) {
@@ -223,25 +307,28 @@ async function execute<T>(config: AiConfig, source: VisualImageSource, model: st
 }
 
 export function observeVisualImage(config: AiConfig, source: VisualImageSource, model: string, options: VisualRequestOptions): Promise<VisualAnalysis> {
-    return execute(config, source, model, options, (snapshot, selected, dataUrl, guard) => observe(selected.config, snapshot, selected.identity, dataUrl, guard));
+    return execute(config, source, model, options, async (snapshot, selected, guard) => {
+        const dataUrl = await prepareSource(snapshot, guard);
+        return observe(selected.config, snapshot, selected.identity, dataUrl, guard);
+    });
 }
 
 export function generateVisualPrompt(config: AiConfig, source: VisualImageSource, analysis: VisualAnalysis, task: VisualPromptTask, model: string, options: VisualRequestOptions): Promise<VisualPrompt> {
     const snapshot = parseAnalysis(analysis);
-    return execute(config, source, model, options, (image, selected, dataUrl, guard) => generate(selected.config, image, snapshot, task, selected.identity, dataUrl, guard));
+    return execute(config, source, model, options, (image, selected, guard) => generate(selected.config, image, snapshot, task, selected.identity, guard));
 }
 
 /** Reuse or observation occurs only after this explicit action; failures never trigger retries. */
 export function runVisualImageTask(config: AiConfig, source: VisualImageSource, task: VisualTask, model: string, options: VisualRequestOptions & { analysis?: VisualAnalysis | null }): Promise<VisualRunResult> {
     const cached = visualAnalysisSchema.safeParse(options.analysis);
-    return execute(config, source, model, options, async (image, selected, dataUrl, guard) => {
+    return execute(config, source, model, options, async (image, selected, guard) => {
         const reusable = cached.success && analysisMatchesSource(cached.data, image) && cached.data.model.value === selected.identity.value && cached.data.model.settingsHash === selected.identity.settingsHash;
-        const analysis = reusable ? cached.data : await observe(selected.config, image, selected.identity, dataUrl, guard);
+        const analysis = reusable ? cached.data : await observe(selected.config, image, selected.identity, await prepareSource(image, guard), guard);
         guard.context.analysisId = analysis.analysisId;
         guard.context.analysisRevision = analysis.revision;
         if (reusable) guard.emit({ type: "analysis", analysis: structuredClone(analysis), ...guard.context });
         if (task === "analysis") return { analysis };
-        return { analysis, prompt: await generate(selected.config, image, analysis, task, selected.identity, dataUrl, guard) };
+        return { analysis, prompt: await generate(selected.config, image, analysis, task, selected.identity, guard) };
     });
 }
 

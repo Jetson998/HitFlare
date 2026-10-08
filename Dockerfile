@@ -7,6 +7,7 @@ RUN --mount=type=cache,target=/root/.bun/install/cache bun install --cache-dir=/
 COPY VERSION /app/VERSION
 COPY CHANGELOG.md /app/CHANGELOG.md
 COPY web ./
+COPY shared /app/shared
 RUN bun run build
 
 # 运行镜像：Node 同时提供登录 API、模板 API 和静态前端。
@@ -22,6 +23,7 @@ COPY --from=web-build --chown=node:node /app/web/dist /app/web/dist
 COPY server/package.json server/package-lock.json /app/server/
 RUN cd /app/server && npm ci --omit=dev --ignore-scripts
 COPY --chown=node:node server /app/server
+COPY --chown=node:node shared /app/shared
 RUN mkdir -p /app/data && chown node:node /app/data
 
 USER node

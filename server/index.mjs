@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { loadCatalog, publicTemplate, inspirationItems, compileTemplate, InputError } from "./catalog.mjs";
 import { createAuthStore } from "./auth.mjs";
 import { createCreativeAgent } from "./agent/routes.mjs";
+import { createReversePromptService } from "./reverse-prompt/routes.mjs";
 
 const dist = fileURLToPath(new URL("../web/dist/", import.meta.url));
 const mime = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".ico": "image/x-icon" };
@@ -15,10 +16,11 @@ function json(res, status, body) {
     res.end(JSON.stringify(body));
 }
 
-export async function createApp({ staticDir = dist, dataDir = process.env.HITFLARE_DATA_DIR || fileURLToPath(new URL("../data/", import.meta.url)), agentModel } = {}) {
+export async function createApp({ staticDir = dist, dataDir = process.env.HITFLARE_DATA_DIR || fileURLToPath(new URL("../data/", import.meta.url)), agentModel, reversePromptModelFactory } = {}) {
     const catalog = await loadCatalog();
     const auth = await createAuthStore(dataDir);
     const agent = await createCreativeAgent({ dataDir, auth, model: agentModel });
+    const reversePrompt = await createReversePromptService({ dataDir, auth, modelFactory: reversePromptModelFactory });
     const runtimeConfig = Buffer.from(`window.__RUNTIME_CONFIG__ = ${JSON.stringify({
         ANALYTICS_GA4_ID: analyticsId(process.env.ANALYTICS_GA4_ID),
         ANALYTICS_BAIDU_ID: analyticsId(process.env.ANALYTICS_BAIDU_ID),
@@ -37,6 +39,8 @@ export async function createApp({ staticDir = dist, dataDir = process.env.HITFLA
             if (path.startsWith("/api/") && !auth.userFromRequest(req)) return json(res, 401, { error: "请先登录" });
             const agentResult = await agent.handle(req, res, url, json);
             if (agentResult !== false) return agentResult;
+            const reverseResult = await reversePrompt.handle(req, res, url, json);
+            if (reverseResult !== false) return reverseResult;
             if (path === "/api/scene-templates" && req.method === "GET") return json(res, 200, catalog.templates.filter(t => t.enabled).map(publicTemplate));
             if (path === "/api/inspirations" && req.method === "GET") {
                 const items = inspirationItems(catalog).filter(i => (!url.searchParams.get("tag") || i.tags.includes(url.searchParams.get("tag"))) && (!url.searchParams.get("category") || i.category === url.searchParams.get("category")));
@@ -76,7 +80,7 @@ export async function createApp({ staticDir = dist, dataDir = process.env.HITFLA
             json(res, error instanceof InputError ? error.status : 500, { error: error instanceof InputError ? error.message : "服务暂时无法完成请求" });
         }
     });
-    server.on("close", () => { void agent.close().finally(auth.close); });
+    server.on("close", () => { void Promise.allSettled([agent.close(), reversePrompt.close()]).finally(auth.close); });
     return server;
 }
 

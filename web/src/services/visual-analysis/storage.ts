@@ -5,53 +5,61 @@ import { z } from "zod";
 import { useUserStore } from "@/stores/use-user-store";
 import { VisualAnalysisError, visualAnalysisSchema, visualPromptSchema, visualSourceSchema, visualTaskSchema, type VisualAnalysis, type VisualImageSource, type VisualPrompt } from "./contract";
 
-export const VISUAL_STORAGE_VERSION = 1;
-const runSchema = z.object({
-    runId: z.string().min(1),
-    task: visualTaskSchema,
-    status: z.enum(["running", "completed", "failed", "stopped", "interrupted"]),
-    error: z.string().nullable(),
-}).strict();
+export const VISUAL_STORAGE_VERSION = 2;
+const runSchema = z
+    .object({
+        runId: z.string().min(1),
+        task: visualTaskSchema,
+        status: z.enum(["running", "completed", "failed", "stopped", "interrupted"]),
+        error: z.string().nullable(),
+    })
+    .strict();
 
-export const visualResultPackageSchema = z.object({
-    packageId: z.string().min(1),
-    source: visualSourceSchema,
-    analysis: visualAnalysisSchema.nullable(),
-    prompts: z.object({ replicate: visualPromptSchema.nullable(), "style-extract": visualPromptSchema.nullable() }).strict(),
-    run: runSchema.nullable(),
-}).strict().superRefine((result, ctx) => {
-    const { source, analysis } = result;
-    if (analysis && (analysis.ownerUserId !== source.ownerUserId || analysis.sourceId !== source.sourceId || analysis.sourceHash !== source.contentHash)) {
-        ctx.addIssue({ code: "custom", message: "分析与结果包图片归属不一致", path: ["analysis"] });
-    }
-    for (const task of ["replicate", "style-extract"] as const) {
-        const prompt = result.prompts[task];
-        if (!prompt) continue;
-        if (prompt.task !== task || prompt.ownerUserId !== source.ownerUserId || prompt.sourceId !== source.sourceId || !analysis) {
-            ctx.addIssue({ code: "custom", message: "提示词任务或图片归属不一致", path: ["prompts", task] });
-        } else if (prompt.analysisId === analysis.analysisId && prompt.analysisRevision > analysis.revision) {
-            ctx.addIssue({ code: "custom", message: "提示词分析版本超出当前分析", path: ["prompts", task] });
+export const visualResultPackageSchema = z
+    .object({
+        packageId: z.string().min(1),
+        source: visualSourceSchema,
+        analysis: visualAnalysisSchema.nullable(),
+        prompts: z.object({ replicate: visualPromptSchema.nullable() }).strict(),
+        run: runSchema.nullable(),
+    })
+    .strict()
+    .superRefine((result, ctx) => {
+        const { source, analysis } = result;
+        if (analysis && (analysis.ownerUserId !== source.ownerUserId || analysis.sourceId !== source.sourceId || analysis.sourceHash !== source.contentHash)) {
+            ctx.addIssue({ code: "custom", message: "分析与结果包图片归属不一致", path: ["analysis"] });
         }
-    }
-});
+        const prompt = result.prompts.replicate;
+        if (prompt) {
+            if (prompt.ownerUserId !== source.ownerUserId || prompt.sourceId !== source.sourceId || !analysis) {
+                ctx.addIssue({ code: "custom", message: "提示词任务或图片归属不一致", path: ["prompts", "replicate"] });
+            } else if (prompt.analysisId === analysis.analysisId && prompt.analysisRevision > analysis.revision) {
+                ctx.addIssue({ code: "custom", message: "提示词分析版本超出当前分析", path: ["prompts", "replicate"] });
+            }
+        }
+    });
 export type VisualResultPackage = z.infer<typeof visualResultPackageSchema>;
 
-export const visualAnalysisStateSchema = z.object({
-    version: z.literal(VISUAL_STORAGE_VERSION),
-    ownerUserId: z.string().min(1),
-    model: z.string(),
-    draft: visualSourceSchema.nullable(),
-    current: visualResultPackageSchema.nullable(),
-    previous: visualResultPackageSchema.nullable(),
-}).strict().superRefine((state, ctx) => {
-    const owners = [state.draft?.ownerUserId, state.current?.source.ownerUserId, state.previous?.source.ownerUserId];
-    if (owners.some((owner) => owner && owner !== state.ownerUserId)) ctx.addIssue({ code: "custom", message: "本地结果不能混入其他用户数据" });
-    if (state.current && state.current.packageId === state.previous?.packageId) ctx.addIssue({ code: "custom", message: "当前与上次结果包 ID 必须不同" });
-});
+export const visualAnalysisStateSchema = z
+    .object({
+        version: z.literal(VISUAL_STORAGE_VERSION),
+        ownerUserId: z.string().min(1),
+        model: z.string(),
+        draft: visualSourceSchema.nullable(),
+        current: visualResultPackageSchema.nullable(),
+        previous: visualResultPackageSchema.nullable(),
+    })
+    .strict()
+    .superRefine((state, ctx) => {
+        const owners = [state.draft?.ownerUserId, state.current?.source.ownerUserId, state.previous?.source.ownerUserId];
+        if (owners.some((owner) => owner && owner !== state.ownerUserId)) ctx.addIssue({ code: "custom", message: "本地结果不能混入其他用户数据" });
+        if (state.current && state.current.packageId === state.previous?.packageId) ctx.addIssue({ code: "custom", message: "当前与上次结果包 ID 必须不同" });
+    });
 export type VisualAnalysisState = z.infer<typeof visualAnalysisStateSchema>;
 
 const store = localforage.createInstance({ name: "infinite-canvas", storeName: "visual_analysis" });
 const writes = new Map<string, Promise<unknown>>();
+const stateKey = (userId: string) => `v${VISUAL_STORAGE_VERSION}:user:${userId}`;
 
 function assertOwner(userId: string) {
     const { user, status } = useUserStore.getState();
@@ -63,7 +71,10 @@ function assertOwner(userId: string) {
 function parseState(value: unknown, userId: string) {
     const parsed = visualAnalysisStateSchema.safeParse(value);
     if (!parsed.success || parsed.data.ownerUserId !== userId) {
-        throw new VisualAnalysisError("INVALID_STORAGE", "本地视觉分析数据损坏、版本未知或用户归属不一致，已保留原数据", { stage: "reading-image", issues: parsed.success ? [] : parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`) });
+        throw new VisualAnalysisError("INVALID_STORAGE", "本地视觉分析数据损坏、版本未知或用户归属不一致，已保留原数据", {
+            stage: "reading-image",
+            issues: parsed.success ? [] : parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`),
+        });
     }
     return parsed.data;
 }
@@ -71,10 +82,8 @@ function parseState(value: unknown, userId: string) {
 function interrupted(result: VisualResultPackage | null): VisualResultPackage | null {
     if (!result) return null;
     const prompts = { ...result.prompts };
-    for (const task of ["replicate", "style-extract"] as const) {
-        const output = prompts[task];
-        if (output?.status === "generating") prompts[task] = { ...output, status: "interrupted" };
-    }
+    const output = prompts.replicate;
+    if (output?.status === "generating") prompts.replicate = { ...output, status: "interrupted" };
     return { ...result, prompts, run: result.run?.status === "running" ? { ...result.run, status: "interrupted" } : result.run };
 }
 
@@ -87,14 +96,14 @@ export function emptyVisualAnalysisState(userId: string): VisualAnalysisState {
 }
 
 export function createVisualResultPackage(source: VisualImageSource): VisualResultPackage {
-    return visualResultPackageSchema.parse({ packageId: nanoid(), source, analysis: null, prompts: { replicate: null, "style-extract": null }, run: null });
+    return visualResultPackageSchema.parse({ packageId: nanoid(), source, analysis: null, prompts: { replicate: null }, run: null });
 }
 
 export async function loadVisualAnalysisState(userId: string): Promise<VisualAnalysisState> {
     try {
         assertOwner(userId);
         await writes.get(userId)?.catch(() => undefined);
-        const stored = await store.getItem<unknown>(`user:${userId}`);
+        const stored = await store.getItem<unknown>(stateKey(userId));
         assertOwner(userId);
         if (stored === null) return emptyVisualAnalysisState(userId);
         const state = parseState(stored, userId);
@@ -118,15 +127,22 @@ export async function saveVisualAnalysisState(userId: string, state: VisualAnaly
     } catch (error) {
         throw storageError(error);
     }
-    const write = (writes.get(userId) || Promise.resolve()).catch(() => undefined).then(async () => {
-        check();
-        const stored = await store.getItem<unknown>(`user:${userId}`);
-        if (stored !== null) parseState(stored, userId);
-        check();
-        await store.setItem(`user:${userId}`, snapshot);
-    }).catch((error) => { throw storageError(error); });
+    const write = (writes.get(userId) || Promise.resolve())
+        .catch(() => undefined)
+        .then(async () => {
+            check();
+            const stored = await store.getItem<unknown>(stateKey(userId));
+            if (stored !== null) parseState(stored, userId);
+            check();
+            await store.setItem(stateKey(userId), snapshot);
+        })
+        .catch((error) => {
+            throw storageError(error);
+        });
     writes.set(userId, write);
-    const clear = () => { if (writes.get(userId) === write) writes.delete(userId); };
+    const clear = () => {
+        if (writes.get(userId) === write) writes.delete(userId);
+    };
     void write.then(clear, clear);
     await write;
 }
@@ -150,16 +166,23 @@ export async function saveVisualPrompt(userId: string, output: VisualPrompt) {
 
 async function enqueueVisualStateMutation(userId: string, mutate: (state: VisualAnalysisState) => VisualAnalysisState) {
     if (!userId.trim()) throw new VisualAnalysisError("OWNER_CHANGED", "缺少视觉分析数据归属用户", { stage: "reading-image" });
-    const write = (writes.get(userId) || Promise.resolve()).catch(() => undefined).then(async () => {
-        assertOwner(userId);
-        const stored = await store.getItem<unknown>(`user:${userId}`);
-        const state = stored === null ? emptyVisualAnalysisState(userId) : parseState(stored, userId);
-        const next = visualAnalysisStateSchema.parse(mutate(state));
-        assertOwner(userId);
-        await store.setItem(`user:${userId}`, { ...next, current: interrupted(next.current), previous: interrupted(next.previous) });
-    }).catch((error) => { throw storageError(error); });
+    const write = (writes.get(userId) || Promise.resolve())
+        .catch(() => undefined)
+        .then(async () => {
+            assertOwner(userId);
+            const stored = await store.getItem<unknown>(stateKey(userId));
+            const state = stored === null ? emptyVisualAnalysisState(userId) : parseState(stored, userId);
+            const next = visualAnalysisStateSchema.parse(mutate(state));
+            assertOwner(userId);
+            await store.setItem(stateKey(userId), { ...next, current: interrupted(next.current), previous: interrupted(next.previous) });
+        })
+        .catch((error) => {
+            throw storageError(error);
+        });
     writes.set(userId, write);
-    const clear = () => { if (writes.get(userId) === write) writes.delete(userId); };
+    const clear = () => {
+        if (writes.get(userId) === write) writes.delete(userId);
+    };
     void write.then(clear, clear);
     await write;
 }
