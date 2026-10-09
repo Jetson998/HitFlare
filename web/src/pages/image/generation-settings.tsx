@@ -3,7 +3,7 @@ import { Button, Modal } from "antd";
 import { ChevronRight, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { ImageSettingsPanel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
+import { ImageSettingsPanel, imageQualityLabel, imageQualityOptionsForModel, imageSizeLabel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { modelOptionName, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
@@ -17,9 +17,10 @@ export function GenerationSettings({ disabled = false }: { disabled?: boolean })
     const openConfigDialog = useConfigStore(state => state.openConfigDialog);
     const theme = canvasThemes[useThemeStore(state => state.theme)];
     const model = config.imageModel || config.model;
+    const quality = imageQualityOptionsForModel(model).some((item) => item.value === config.quality) ? config.quality : "auto";
     const summary = [
         model ? modelOptionName(model) : t("settingsPanels.model.select"),
-        imageQualityLabel(config.quality),
+        imageQualityLabel(quality),
         imageSizeLabel(config.size),
         config.background === "transparent" ? t("settingsPanels.image.transparent") : "",
         t("settingsPanels.image.images", { count: Number(config.count) || 1 }),
@@ -56,7 +57,10 @@ export function GenerationSettings({ disabled = false }: { disabled?: boolean })
                         className="workspace-control !rounded-lg !text-[13px]"
                         config={config}
                         value={model}
-                        onChange={value => updateConfig("imageModel", value)}
+                        onChange={value => {
+                            updateConfig("imageModel", value);
+                            if (!imageQualityOptionsForModel(value).some((item) => item.value === config.quality)) updateConfig("quality", "auto");
+                        }}
                         capability="image"
                         fullWidth
                         onMissingConfig={() => {
@@ -65,7 +69,7 @@ export function GenerationSettings({ disabled = false }: { disabled?: boolean })
                         }}
                     />
                 </div>
-                <ImageSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4 [&_button.h-9]:h-8 [&_button.h-9]:rounded-lg [&_button.h-9]:text-[13px] [&_label.h-9]:h-8 [&_label.h-9]:rounded-lg [@media(pointer:coarse)]:[&_button.h-9]:h-10 [@media(pointer:coarse)]:[&_label.h-9]:h-10 [@media(pointer:coarse)]:[&_input]:text-base" maxCount={10} />
+                <ImageSettingsPanel config={config} qualityModel={model} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4 [&_button.h-9]:h-8 [&_button.h-9]:rounded-lg [&_button.h-9]:text-[13px] [&_label.h-9]:h-8 [&_label.h-9]:rounded-lg [@media(pointer:coarse)]:[&_button.h-9]:h-10 [@media(pointer:coarse)]:[&_label.h-9]:h-10 [@media(pointer:coarse)]:[&_input]:text-base" maxCount={10} />
             </div>
         </Modal>
     </>;

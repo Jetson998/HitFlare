@@ -123,7 +123,7 @@ const GEMINI_IMAGE_SIZE_BY_QUALITY: Record<string, string> = { low: "1K", medium
 function normalizeQuality(quality: string) {
     const value = quality.trim().toLowerCase();
     const normalized = QUALITY_ALIASES[value] || value;
-    return QUALITY_BASE[normalized] ? normalized : undefined;
+    return QUALITY_BASE[normalized] || normalized === "xhigh" || normalized === "max" ? normalized : undefined;
 }
 
 /** Only "transparent" is forwarded; any other value (incl. empty) means keep the default opaque background. */
@@ -134,10 +134,10 @@ function normalizeBackground(background: string | undefined) {
 /** Map "quality + ratio" to an explicit pixel dimension like "3840x2160". */
 function resolveSize(quality: string | undefined, ratio: string): string {
     const parsedRatio = parseImageRatio(ratio);
-    const scale = quality === "high" ? "4k" : quality === "medium" || quality === "hd" ? "2k" : "1k";
+    const scale = quality === "high" || quality === "xhigh" || quality === "max" ? "4k" : quality === "medium" || quality === "hd" ? "2k" : "1k";
     const preset = imageSizePresets[scale][ratio];
     if (preset) return preset;
-    const basePixels = quality ? QUALITY_BASE[quality] : undefined;
+    const basePixels = quality === "xhigh" || quality === "max" ? QUALITY_BASE.high : quality ? QUALITY_BASE[quality] : undefined;
     const isLandscape = parsedRatio.width >= parsedRatio.height;
     const longRatio = isLandscape ? parsedRatio.width / parsedRatio.height : parsedRatio.height / parsedRatio.width;
     let longSide: number;
