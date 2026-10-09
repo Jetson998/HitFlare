@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { App, Button, Spin, Tag, Tooltip } from "antd";
+import { App, Button, Spin, Tag } from "antd";
 import { ClipboardPaste, Copy, ImagePlus, ScanSearch, Settings2, Sparkles, Square, Trash2, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -181,19 +181,14 @@ export default function ReversePromptPage() {
         message.error(t("imageWorkbench.clipboardEmpty"));
     };
 
-    const copyLabel = (result: ReversePromptResult) =>
-        !result.analysis ? (result.status === "generating" ? "reversePrompt.copyCurrentDraft" : "reversePrompt.copyUnvalidatedDraft") : result.status === "completed" ? "reversePrompt.copyFinal" : "reversePrompt.copyDraft";
-
     const copyResult = (result: ReversePromptResult) => {
-        if (!result.text.trim()) return;
-        copyText(result.text, t(!result.analysis ? "reversePrompt.copiedUnvalidated" : result.status === "completed" ? "reversePrompt.copied" : "reversePrompt.copiedDraft"));
+        if (result.status !== "completed" || !result.analysis || !result.text.trim()) return;
+        copyText(result.text, t("reversePrompt.copied"));
     };
 
     const renderCopyButton = (result: ReversePromptResult | null) =>
-        result ? (
-            <Tooltip title={t(!result.analysis && result.text.trim() ? "reversePrompt.copyPreviewNotice" : copyLabel(result))}>
-                <Button type="text" size="small" className="shrink-0 !text-xs" icon={<Copy className="size-4" />} disabled={!result.text.trim()} onClick={() => copyResult(result)}>{t(copyLabel(result))}</Button>
-            </Tooltip>
+        result?.status === "completed" && result.analysis && result.text.trim() ? (
+            <Button type="text" size="small" className="shrink-0 !text-xs" icon={<Copy className="size-4" />} onClick={() => copyResult(result)}>{t("reversePrompt.copyFinal")}</Button>
         ) : null;
 
     const renderAnalysis = (result: ReversePromptResult) => {
@@ -303,7 +298,7 @@ export default function ReversePromptPage() {
         const refining = Boolean(result.analysis && result.status === "generating");
         const draftRetained = Boolean(result.analysis && result.status !== "generating" && result.status !== "completed");
         return (
-            <div className="thin-scrollbar min-h-0 max-h-[calc(100dvh-145px)] overflow-y-auto pr-1 @min-[1100px]/reverse:flex-1">
+            <div key={`${userId}:${selectedHistoryId || "draft"}`} className="thin-scrollbar min-h-0 max-h-[calc(100dvh-145px)] overflow-y-auto pr-1 @min-[1100px]/reverse:flex-1">
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <h3 className="text-sm font-semibold">{t("reversePrompt.replicatePrompt")}</h3>
@@ -338,8 +333,9 @@ export default function ReversePromptPage() {
                 {isPreview && result.status !== "generating" ? <div className="mt-2 text-xs text-muted-foreground">{t("reversePrompt.previewFailureNotice")}</div> : null}
                 {draftRetained ? <div className="mt-2 text-xs text-muted-foreground">{t("reversePrompt.draftRetainedNotice")}</div> : null}
                 {result.error ? <div className="mt-2 text-xs text-red-600 dark:text-red-400">{result.error}</div> : null}
+                {renderAnalysis(result)}
                 {result.analysis && (refining || result.partialText) ? (
-                    <details key={selectedHistoryId} className="mt-3 rounded-md border border-border px-3 py-2" onToggle={event => { if (event.currentTarget.open && followRefine.current && refineScrollRef.current) refineScrollRef.current.scrollTop = refineScrollRef.current.scrollHeight; }}>
+                    <details className="mt-3 rounded-md border border-border px-3 py-2" onToggle={event => { if (event.currentTarget.open && followRefine.current && refineScrollRef.current) refineScrollRef.current.scrollTop = refineScrollRef.current.scrollHeight; }}>
                         <summary className="cursor-pointer text-xs text-muted-foreground">{t("reversePrompt.refineProcess")}</summary>
                         <p className="mb-2 mt-3 text-xs text-muted-foreground">{t("reversePrompt.refineProcessNotice")}</p>
                         <div ref={refineScrollRef} onScroll={event => { const el = event.currentTarget; followRefine.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48; }} className="thin-scrollbar max-h-[25dvh] overflow-y-auto whitespace-pre-wrap break-words text-[13px] leading-6">
@@ -348,8 +344,7 @@ export default function ReversePromptPage() {
                         </div>
                     </details>
                 ) : null}
-                {renderAnalysis(result)}
-                <TaskDiagnostics key={selectedHistoryId} />
+                <TaskDiagnostics />
             </div>
         );
     };
