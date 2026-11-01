@@ -21,6 +21,6 @@ export function AuthGuard() {
 }
 
 export function AdminGuard() {
-    const user = useUserStore((state) => state.user);
-    return user?.role === "admin" ? <Outlet /> : <Navigate to="/" replace />;
+    const allowed = useUserStore((state) => state.user?.permissions?.includes("account:manage") === true);
+    return allowed ? <Outlet /> : <Navigate to="/" replace />;
 }

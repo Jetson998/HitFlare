@@ -1,3 +1,4 @@
+import {uploadServerMedia,checkMediaSize,sessionIdentity,assertWorkspaceSession} from "@/services/api/workspace";
 import localforage from "localforage";
 
 import { nanoid } from "nanoid";
@@ -26,18 +27,11 @@ const IMAGE_TIMEOUT_ERROR = "ImageTimeoutError";
 type ImageReadOptions = { signal?: AbortSignal };
 
 export async function uploadImage(input: string | Blob, options?: ImageReadOptions): Promise<UploadedImage> {
-    if (typeof input !== "string") return storeImage(input, options);
-
-    let blob: Blob;
-    try {
-        blob = await fetchImageBlob(input, options);
-    } catch (error) {
-        if (options?.signal?.aborted || isNamedError(error, IMAGE_RESPONSE_ERROR) || isNamedError(error, IMAGE_TIMEOUT_ERROR) || !/^https?:\/\//i.test(input)) throw error;
-        const meta = await loadImageMeta(input, options, IMAGE_REMOTE_LOAD_TIMEOUT_MS);
-        if (!meta) throw error;
-        return { url: input, width: meta.width, height: meta.height, bytes: 0, mimeType: "" };
-    }
-    return storeImage(blob, options);
+    const identity=sessionIdentity();
+    const blob=typeof input === "string" ? await fetchImageBlob(input,options) : input;
+    assertWorkspaceSession(identity);
+    checkMediaSize(blob,"image");
+    return uploadServerMedia(blob,"image",options?.signal);
 }
 
 /** Read a local image without adding it to the shared asset store. The caller owns the object URL. */
@@ -50,21 +44,6 @@ export async function readImageBlob(blob: Blob, options?: ImageReadOptions): Pro
         return { url, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type.startsWith("image/") ? blob.type : "" };
     } catch (error) {
         URL.revokeObjectURL(url);
-        throw error;
-    }
-}
-
-async function storeImage(blob: Blob, options?: ImageReadOptions): Promise<UploadedImage> {
-    const storageKey = `image:${nanoid()}`;
-    const image = await readImageBlob(blob, options);
-    try {
-        await store.setItem(storageKey, blob);
-        throwIfAborted(options?.signal);
-        objectUrls.set(storageKey, image.url);
-        return { ...image, storageKey };
-    } catch (error) {
-        URL.revokeObjectURL(image.url);
-        await store.removeItem(storageKey).catch(() => undefined);
         throw error;
     }
 }
@@ -143,6 +122,7 @@ function throwIfAborted(signal?: AbortSignal) {
 
 export async function resolveImageUrl(storageKey?: string, fallback = "") {
     if (!storageKey) return fallback;
+    if(!storageKey.includes(":")) return `/api/workspace/media/${encodeURIComponent(storageKey)}/content`;
     const cached = objectUrls.get(storageKey);
     if (cached) return cached;
     const blob = await store.getItem<Blob>(storageKey);
@@ -153,6 +133,12 @@ export async function resolveImageUrl(storageKey?: string, fallback = "") {
 }
 
 export async function getImageBlob(storageKey: string) {
+    if(!storageKey.includes(":")) {
+        const identity=sessionIdentity();
+        const response=await fetch(`/api/workspace/media/${encodeURIComponent(storageKey)}/content`);
+        if(!response.ok) throw new Error(`媒体读取失败（HTTP ${response.status}）`);
+        const blob=await response.blob();assertWorkspaceSession(identity);return blob;
+    }
     return store.getItem<Blob>(storageKey);
 }
 
@@ -172,6 +158,7 @@ export async function imageToDataUrl(image: { url?: string; dataUrl?: string; st
 export async function deleteStoredImages(keys: Iterable<string>) {
     await Promise.all(
         Array.from(new Set(keys)).map(async (key) => {
+            if(!key.startsWith("image:")) return;
             const url = objectUrls.get(key);
             if (url) URL.revokeObjectURL(url);
             objectUrls.delete(key);
@@ -180,21 +167,8 @@ export async function deleteStoredImages(keys: Iterable<string>) {
     );
 }
 
-export async function cleanupUnusedImages(usedData: unknown) {
-    const usedKeys = collectImageStorageKeys(usedData);
-    await Promise.all([
-        imageLogStore.iterate((value) => {
-            collectImageStorageKeys(value, usedKeys);
-        }),
-        videoLogStore.iterate((value) => {
-            collectImageStorageKeys(value, usedKeys);
-        }),
-    ]);
-    const unused: string[] = [];
-    await store.iterate((_value, key) => {
-        if (!usedKeys.has(key)) unused.push(key);
-    });
-    await deleteStoredImages(unused);
+export async function cleanupUnusedImages(_usedData:unknown) {
+    // Legacy browser objects remain sealed; automatic cleanup waits for server references and explicit policy.
 }
 
 export function collectImageStorageKeys(value: unknown, keys = new Set<string>()) {

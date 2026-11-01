@@ -15,6 +15,15 @@
 
 ## 开发与数据
 
+- [HitFlare 服务化方案复审（基于 v0.18.3 线上代码）](hitflare/SERVICEIZATION_CURRENT_RELEASE_REVIEW.md)
+- [HitFlare 服务化阶段成果与验收记录](hitflare/SERVICEIZATION_STAGE_HISTORY.md)
+- [HitFlare 服务化分阶段开发与本地化测试计划](hitflare/SERVICEIZATION_PHASED_DEVELOPMENT_LOCAL_TEST_PLAN.md)
+- [HitFlare P1 基础底座交付与人工验收](hitflare/SERVICEIZATION_P1_ACCEPTANCE.md)
+- [HitFlare P2 配置与数据交付及人工验收](hitflare/SERVICEIZATION_P2_ACCEPTANCE.md)
+- [HitFlare P3 生成与调用交付及人工验收](hitflare/SERVICEIZATION_P3_ACCEPTANCE.md)
+- [HitFlare P4 画布与引用交付及人工验收](hitflare/SERVICEIZATION_P4_ACCEPTANCE.md)
+- [HitFlare P5 管理、恢复与总回归交付及人工验收](hitflare/SERVICEIZATION_P5_ACCEPTANCE.md)
+- [HitFlare P6 联调收尾与集中验收准备](hitflare/SERVICEIZATION_P6_ACCEPTANCE.md)
 - [HitFlare 服务化开发排期与权限、用户体系对接方案](hitflare/SERVICE_COLLABORATION_PERMISSION_INTEGRATION_PLAN.md)
 - [HitFlare 服务化与权限体系验收测试用例](hitflare/SERVICE_AND_PERMISSION_ACCEPTANCE_TEST_CASES.md)
 - [HitFlare 后端需求清单：权限依赖与用户数据服务端化](hitflare/BACKEND_ASSET_CANVAS_SERVICE_REQUIREMENTS.md)
@@ -43,8 +52,8 @@
 
 ## 说明
 
-- 当前画布项目和“我的素材”主要保存在浏览器本地，跨设备可自行配置 WebDAV 同步。
-- AI API Key 保存在浏览器本地，并由前端直接请求 OpenAI 兼容接口。
+- 已部署基线仍使用浏览器本地资产和画布；本地 P2～P6 候选已接入按账号归属的服务端存储并停用旧浏览器 WebDAV，待集中人工验收。
+- 本地候选将 API Key 加密保存于服务端；浏览器直连模型时通过本人鉴权 runtime-secret 读取，Agent/反推由服务端解析凭据。
 
 ## 原理说明
 

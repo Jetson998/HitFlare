@@ -1,3 +1,4 @@
+import {testKeyring,testChannel} from "./serviceization-fixtures.mjs";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -21,7 +22,7 @@ before(async () => {
     process.env.HITFLARE_ADMIN_USERNAME = "catalog-test-admin";
     process.env.HITFLARE_ADMIN_PASSWORD = "catalog-test-password";
     dataDir = await mkdtemp(join(tmpdir(), "hitflare-catalog-test-"));
-    server = await createApp({ staticDir: fileURLToPath(new URL("../web/dist/", import.meta.url)), dataDir });
+    server = await createApp({ keyring:testKeyring, staticDir: fileURLToPath(new URL("../web/dist/", import.meta.url)), dataDir });
     await new Promise((resolve, reject) => {
         server.once("error", reject);
         server.listen(0, "127.0.0.1", resolve);
@@ -43,6 +44,7 @@ before(async () => {
 after(async () => {
     server?.closeAllConnections();
     await new Promise((resolve) => server?.close(resolve));
+    await server?.storageClosed;
     if (dataDir) await rm(dataDir, { recursive: true, force: true });
 });
 

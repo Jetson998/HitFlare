@@ -3,7 +3,8 @@ import i18n from "@/i18n";
 import { createVisualImageSource, type VisualImageSource, type VisualStage } from "@/services/api/visual-analysis";
 import { activeReversePromptTasks, createReversePromptTask, fetchReversePromptImage, findReversePromptRequest, getReversePromptTask, isReversePromptRunning, listReversePromptTasks, stopReversePromptTask, subscribeReversePromptTasks, reversePromptRequestConfig, ReversePromptApiError, type ReversePromptTask, type ReversePromptTaskSummary } from "@/services/api/reverse-prompt-tasks";
 import { emptyReversePromptState, loadReversePromptState, saveReversePromptState, type ReversePromptHistory, type ReversePromptResult, type ReversePromptState } from "@/services/reverse-prompt-storage";
-import type { AiConfig } from "@/stores/use-config-store";
+import { readClick, rememberClick } from "@/lib/click-timer";
+import { modelMatchesCapability, selectableModelsByCapability, useConfigStore, type AiConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 
 type ActiveTask = { startedAt: number; stage: VisualStage };
@@ -21,6 +22,7 @@ type ReversePromptStore = ReversePromptState & {
     submitting: boolean;
     loadingMore: boolean;
     nextCursor: string | null;
+    openingHistoryId?: string;
     initialize: (userId: string, fallbackModel: string) => Promise<void>;
     refreshTasks: (restoreActive?: boolean) => Promise<void>;
     loadMore: () => Promise<void>;
@@ -38,6 +40,7 @@ let selectionVersion = 0;
 let initialization: { userId: string; version: number; promise: Promise<void> } | undefined;
 let refreshRequest: { version: number; restoreActive: boolean; selection: number; promise: Promise<void> } | undefined;
 const snapshots = new Map<string, ReversePromptTask>();
+const imageBlobs = new Map<string, Blob>();
 
 function ownerCurrent(userId: string, version = sessionVersion) {
     const { user, status } = useUserStore.getState();
@@ -54,23 +57,43 @@ function persist(userId: string) {
         if (ownerCurrent(userId)) useReversePromptStore.setState({ storageError: true });
     });
 }
+const reverseStageLabel: Record<string, string> = {
+    "reading-image": "reversePrompt.stage.reading",
+    observing: "reversePrompt.stage.observing",
+    "validating-analysis": "reversePrompt.stage.validatingAnalysis",
+    generating: "reversePrompt.stage.generating",
+    "validating-prompt": "reversePrompt.stage.validatingPrompt",
+    completed: "reversePrompt.stage.completed",
+};
+export function reversePromptStatusLabel(status: ReversePromptTaskSummary["status"], stage?: string | null) {
+    if (status === "queued") return i18n.t("reversePrompt.historyStatus.queued");
+    if (isReversePromptRunning(status)) return i18n.t(stage && reverseStageLabel[stage] ? reverseStageLabel[stage] : "reversePrompt.historyStatus.generating");
+    return i18n.t(`reversePrompt.historyStatus.${status}`);
+}
+function reverseHistoryTone(status: ReversePromptTaskSummary["status"]): ReversePromptHistory["statusTone"] {
+    if (isReversePromptRunning(status)) return "running";
+    if (status === "completed") return "success";
+    if (status === "failed") return "failed";
+    return "neutral";
+}
 function resultStatus(task: ReversePromptTaskSummary): ReversePromptResult["status"] {
     return isReversePromptRunning(task.status) ? "generating" : task.status as ReversePromptResult["status"];
 }
 function historyItem(task: ReversePromptTaskSummary): ReversePromptHistory {
     const text = task.text || "";
     const createdAt = Date.parse(task.createdAt);
-    return { id: task.id, createdAt, title: text.trim().slice(0, 12) || i18n.t("reversePrompt.title"), text, model: task.model.value, modelLabel: task.model.label, status: resultStatus(task), error: task.error || undefined, durationMs: task.durationMs || (isReversePromptRunning(task.status) ? Math.max(0, Date.now() - Date.parse(task.startedAt || task.createdAt)) : 0), successCount: task.status === "completed" ? 1 : 0, failCount: ["failed", "stopped", "interrupted"].includes(task.status) ? 1 : 0, imageCount: 1, time: new Date(createdAt).toLocaleString(i18n.resolvedLanguage, { hour12: false }), itemUnit: "prompt", resultText: text };
+    const clickStart = readClick(task.id);
+    return { id: task.id, createdAt, title: text.trim().slice(0, 12) || i18n.t("reversePrompt.title"), text, model: task.model.value, modelLabel: task.model.label, status: resultStatus(task), error: task.error || undefined, durationMs: isReversePromptRunning(task.status) ? Math.max(0, Date.now() - (clickStart || Date.parse(task.startedAt || task.createdAt))) : (task.durationMs || 0), successCount: task.status === "completed" ? 1 : 0, failCount: ["failed", "stopped", "interrupted"].includes(task.status) ? 1 : 0, imageCount: 1, thumbnails: [`/api/reverse-prompt/tasks/${encodeURIComponent(task.id)}/image?owner=${encodeURIComponent(task.userId)}`], time: new Date(createdAt).toLocaleString(i18n.resolvedLanguage, { hour12: false }), itemUnit: "prompt", resultText: text, statusLabel: reversePromptStatusLabel(task.status, task.stage), statusTone: reverseHistoryTone(task.status) };
 }
 function taskText(task: ReversePromptTask) {
     return (task.status === "completed" ? task.prompt?.modelText : task.analysis?.reversePromptDraft.text) || task.observationPreview?.promptText || "";
 }
 function currentResult(task: ReversePromptTask, source?: VisualImageSource | null): ReversePromptResult {
-    return { text: taskText(task), model: task.model.value, modelLabel: task.model.label, status: resultStatus(task), error: task.error || undefined, errorCode: task.errorCode, failureStage: task.failureStage, diagnostics: task.diagnostics, partialText: task.partialText, updatedAt: Date.parse(task.updatedAt), durationMs: task.durationMs || undefined, source, analysis: task.analysis, prompt: task.prompt, observationPreview: task.observationPreview, stage: task.stage };
+    return { text: taskText(task), model: task.model.value, modelLabel: task.model.label, status: resultStatus(task), taskStatus: task.status, error: task.error || undefined, errorCode: task.errorCode, failureStage: task.failureStage, diagnostics: task.diagnostics, partialText: task.partialText, updatedAt: Date.parse(task.updatedAt), durationMs: task.durationMs || undefined, source, analysis: task.analysis, prompt: task.prompt, observationPreview: task.observationPreview, stage: task.stage };
 }
 function activeTask(id?: string): ActiveTask | null {
     const task = id ? snapshots.get(id) : undefined;
-    return task && isReversePromptRunning(task.status) ? { startedAt: Date.parse(task.startedAt || task.createdAt), stage: task.stage } : null;
+    return task && isReversePromptRunning(task.status) ? { startedAt: readClick(id) || Date.parse(task.startedAt || task.createdAt), stage: task.stage } : null;
 }
 function mergeHistory(entries: ReversePromptHistory[]) {
     const state = useReversePromptStore.getState();
@@ -97,6 +120,16 @@ function applyTask(task: ReversePromptTask) {
     useReversePromptStore.setState({ history: mergeHistory([entry]), activeTaskId, activeTask: activeTask(activeTaskId), ...(state.selectedHistoryId === task.id ? { currentResult: currentResult(task, source), analysis: task.analysis, ...(running ? { model: task.model.value } : {}) } : {}) });
 }
 
+
+function adoptedTextModel(preferred: string | undefined, fallback: string) {
+    const { loaded, config, isAiConfigReady } = useConfigStore.getState();
+    if (!loaded) return preferred || "";
+    const ready = (value?: string) => Boolean(value && modelMatchesCapability(config, value, "text") && isAiConfigReady(config, value));
+    if (ready(preferred)) return preferred || "";
+    if (ready(fallback)) return fallback;
+    return selectableModelsByCapability(config, "text").find(ready) || "";
+}
+
 export const useReversePromptStore = create<ReversePromptStore>()((set, get) => ({
     ...emptyReversePromptState(), ownerUserId: "", hydratedUserId: "", currentResult: null, activeTaskId: undefined, activeTask: null, storageError: false, connectionIssue: undefined, refreshingTasks: false, submitting: false, loadingMore: false, nextCursor: null,
     initialize: async (userId, fallbackModel) => {
@@ -104,9 +137,12 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
         if (get().ownerUserId === userId && get().hydratedUserId === userId) {
             const version = sessionVersion; const selection = selectionVersion;
             await get().refreshTasks(true);
-            if (ownerCurrent(userId, version) && selection === selectionVersion && !get().activeTaskId && !get().connectionIssue) {
-                set({ selectedHistoryId: undefined, currentResult: null, analysis: null }); void persist(userId);
-            }
+            if (!ownerCurrent(userId, version) || selection !== selectionVersion) return;
+            const nextModel = adoptedTextModel(get().model, fallbackModel);
+            const patch: Partial<ReversePromptStore> = {};
+            if (nextModel && nextModel !== get().model && !get().activeTaskId && !get().pendingRequestId) patch.model = nextModel;
+            if (!get().activeTaskId && !get().connectionIssue) Object.assign(patch, { selectedHistoryId: undefined, currentResult: null, analysis: null });
+            if (Object.keys(patch).length) { set(patch); void persist(userId); }
             return;
         }
         unsubscribe?.(); unsubscribe = undefined;
@@ -121,15 +157,26 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
             try {
                 const [local, page, running] = await Promise.all([loadReversePromptState(userId), listReversePromptTasks(userId), activeReversePromptTasks(userId)]);
                 if (!ownerCurrent(userId, version)) return;
-                set({ draft: local.draft, model: local.model || fallbackModel, pendingRequestId: local.pendingRequestId, hydratedUserId: userId, history: page.tasks.map(historyItem), nextCursor: page.nextCursor });
+                set({ draft: null, model: useConfigStore.getState().loaded ? adoptedTextModel(local.model, fallbackModel) : (local.model || fallbackModel), pendingRequestId: local.pendingRequestId, hydratedUserId: userId, history: page.tasks.map(historyItem), nextCursor: page.nextCursor });
+                const firstId = page.tasks[0]?.id;
+                if (firstId && !snapshots.has(firstId)) void getReversePromptTask(userId, firstId).then(task => { if (ownerCurrent(userId, version)) snapshots.set(task.id, task); }).catch(() => undefined);
                 running.forEach(applyTask);
                 const pending = local.pendingRequestId ? await findReversePromptRequest(userId, local.pendingRequestId) : null;
                 if (!ownerCurrent(userId, version)) return;
-                if (pending) { applyTask(pending); set({ pendingRequestId: undefined }); }
+                if (pending) { applyTask(pending); set({ pendingRequestId: undefined }); if (isReversePromptRunning(pending.status) && selection === selectionVersion) await get().selectHistory(pending.id); }
+                else if (local.pendingRequestId) set({ pendingRequestId: undefined });
                 const candidates = [...snapshots.values()].filter(task => isReversePromptRunning(task.status)).sort((a, b) => Date.parse(b.startedAt || b.createdAt) - Date.parse(a.startedAt || a.createdAt));
                 const selected = candidates.find(task => task.id === local.selectedTaskId)?.id || candidates[0]?.id;
-                if (selected && selection === selectionVersion) await get().selectHistory(selected);
-                if (!ownerCurrent(userId, version)) return;
+                if (selected && selection === selectionVersion && get().activeTaskId !== selected) await get().selectHistory(selected);
+                if (!ownerCurrent(userId, version) || selection !== selectionVersion) return;
+                if (!get().activeTaskId) {
+                    const model = useConfigStore.getState().loaded ? adoptedTextModel(get().model, fallbackModel) : get().model;
+                    set({ draft: null, selectedHistoryId: undefined, currentResult: null, analysis: null, pendingRequestId: undefined, ...(model ? { model } : {}) });
+                    void persist(userId);
+                } else {
+                    const model = adoptedTextModel(get().model, fallbackModel);
+                    if (model && model !== get().model && !get().pendingRequestId) { set({ model }); void persist(userId); }
+                }
                 let disconnected = false;
                 unsubscribe = subscribeReversePromptTasks(userId, task => {
                     if (ownerCurrent(userId, version)) { disconnected = false; set({ connectionIssue: undefined }); applyTask(task); }
@@ -167,6 +214,8 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
                     return historyItem(known && known.revision >= task.revision ? { ...known, text: taskText(known) } : task);
                 });
                 set({ history: mergeHistory(entries) });
+                const firstId = page.tasks[0]?.id;
+                if (firstId && !snapshots.has(firstId)) void getReversePromptTask(userId, firstId).then(task => { if (ownerCurrent(userId, version)) snapshots.set(task.id, task); }).catch(() => undefined);
                 running.forEach(applyTask);
                 const activeId = get().activeTaskId;
                 const selectedId = get().selectedHistoryId;
@@ -227,13 +276,14 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
         if (!ownerCurrent(userId)) return;
         const known = snapshots.get(id);
         const running = known ? isReversePromptRunning(known.status) : get().history.find(item => item.id === id)?.status === "generating";
-        set({ selectedHistoryId: id, activeTaskId: running ? id : undefined, activeTask: running ? activeTask(id) : null, currentResult: null, analysis: null, error: undefined });
+        set({ openingHistoryId: id, selectedHistoryId: id, activeTaskId: running ? id : undefined, activeTask: running ? activeTask(id) : null, currentResult: null, analysis: null, error: undefined });
         try {
-            const task = await getReversePromptTask(userId, id);
+            const task = known || await getReversePromptTask(userId, id);
             if (!ownerCurrent(userId, version) || selection !== selectionVersion) return;
             applyTask(task);
             const existing = get().draft?.source;
-            const blob = existing?.sourceId === task.source.sourceId ? existing.blob : await fetchReversePromptImage(userId, id);
+            const blob = existing?.sourceId === task.source.sourceId ? existing.blob : imageBlobs.get(id) || await fetchReversePromptImage(userId, id);
+            if (existing?.sourceId !== task.source.sourceId) imageBlobs.set(id, blob);
             if (!ownerCurrent(userId, version) || selection !== selectionVersion) return;
             const source: VisualImageSource = { ...task.source, blob };
             const latest = snapshots.get(id) || task;
@@ -242,6 +292,8 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
             void persist(userId);
         } catch (error) {
             if (ownerCurrent(userId, version) && selection === selectionVersion) set({ error: error instanceof Error ? error.message : "任务结果读取失败" });
+        } finally {
+            if (ownerCurrent(userId, version) && selection === selectionVersion && get().openingHistoryId === id) set({ openingHistoryId: undefined });
         }
     },
     run: async (config, userId) => {
@@ -251,6 +303,7 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
         try { reversePromptRequestConfig(config, initial.model); }
         catch (error) { set({ error: error instanceof Error ? error.message : "模型配置无效" }); return; }
         const requestId = initial.pendingRequestId || crypto.randomUUID();
+        const clickAt = Date.now();
         ++selectionVersion;
         set({ submitting: true, pendingRequestId: requestId, error: undefined, storageError: false });
         try {
@@ -260,6 +313,7 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
             if (!ownerCurrent(userId, version)) return;
             const task = await createReversePromptTask(userId, source, structuredClone(config), initial.model, requestId);
             if (!ownerCurrent(userId, version)) return;
+            rememberClick(task.id, clickAt);
             set({ activeTaskId: task.id, selectedHistoryId: task.id });
             applyTask(task);
             const latest = snapshots.get(task.id) || task;
@@ -273,7 +327,7 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
                 try {
                     const task = await findReversePromptRequest(userId, requestId);
                     if (!ownerCurrent(userId, version)) return;
-                    if (task) { set({ activeTaskId: task.id }); applyTask(task); set({ pendingRequestId: undefined }); await get().selectHistory(task.id); return; }
+                    if (task) { rememberClick(task.id, clickAt); set({ activeTaskId: task.id }); applyTask(task); set({ pendingRequestId: undefined }); await get().selectHistory(task.id); return; }
                 } catch { /* Keep the request id for explicit status recovery or resubmission. */ }
             }
             if (ownerCurrent(userId, version)) set({ error: knownRejected ? error.message : "提交响应未确认，请先刷新任务状态；再次点击开始会沿用同一请求标识，避免重复执行" });
@@ -291,7 +345,7 @@ export const useReversePromptStore = create<ReversePromptStore>()((set, get) => 
 function disconnect() {
     unsubscribe?.(); unsubscribe = undefined;
     initialization = undefined; refreshRequest = undefined;
-    ++sessionVersion; ++selectionVersion; snapshots.clear();
+    ++sessionVersion; ++selectionVersion; snapshots.clear(); imageBlobs.clear();
 }
 if (typeof window !== "undefined") {
     window.addEventListener("pagehide", disconnect);

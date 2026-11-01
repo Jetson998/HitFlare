@@ -1,3 +1,4 @@
+import {uploadServerMedia,sessionIdentity,assertWorkspaceSession} from "@/services/api/workspace";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
 
@@ -10,22 +11,21 @@ const videoLogStore = localforage.createInstance({ name: "infinite-canvas", stor
 const objectUrls = new Map<string, string>();
 
 export async function uploadMediaFile(input: string | Blob, prefix = "file"): Promise<UploadedFile> {
+    const identity=sessionIdentity();
     let blob = input;
     if (typeof blob === "string") {
         const response = await fetch(withLocalProxy(blob));
         if (!response.ok) throw new Error(`读取媒体失败（HTTP ${response.status}）`);
         blob = await response.blob();
     }
-    const storageKey = `${prefix}:${nanoid()}`;
-    await store.setItem(storageKey, blob);
-    const url = URL.createObjectURL(blob);
-    objectUrls.set(storageKey, url);
-    const meta = blob.type.startsWith("video/") ? await readVideoMeta(url) : blob.type.startsWith("audio/") ? await readAudioMeta(url) : {};
-    return { url, storageKey, bytes: blob.size, mimeType: blob.type || "application/octet-stream", ...meta };
+    assertWorkspaceSession(identity);
+    const kind=prefix.includes("audio") || blob.type.startsWith("audio/") ? "audio" : "video";
+    return uploadServerMedia(blob,kind);
 }
 
 export async function resolveMediaUrl(storageKey?: string, fallback = "") {
     if (!storageKey) return fallback;
+    if(!storageKey.includes(":")) return `/api/workspace/media/${encodeURIComponent(storageKey)}/content`;
     const cached = objectUrls.get(storageKey);
     if (cached) return cached;
     const blob = await store.getItem<Blob>(storageKey);
@@ -36,6 +36,12 @@ export async function resolveMediaUrl(storageKey?: string, fallback = "") {
 }
 
 export async function getMediaBlob(storageKey: string) {
+    if(!storageKey.includes(":")) {
+        const identity=sessionIdentity();
+        const response=await fetch(`/api/workspace/media/${encodeURIComponent(storageKey)}/content`);
+        if(!response.ok) throw new Error(`媒体读取失败（HTTP ${response.status}）`);
+        const blob=await response.blob();assertWorkspaceSession(identity);return blob;
+    }
     return store.getItem<Blob>(storageKey);
 }
 
@@ -49,6 +55,7 @@ export async function setMediaBlob(storageKey: string, blob: Blob) {
 export async function deleteStoredMedia(keys: Iterable<string>) {
     await Promise.all(
         Array.from(new Set(keys)).map(async (key) => {
+            if(!key.includes(":")) return;
             const url = objectUrls.get(key);
             if (url) URL.revokeObjectURL(url);
             objectUrls.delete(key);
@@ -57,14 +64,8 @@ export async function deleteStoredMedia(keys: Iterable<string>) {
     );
 }
 
-export async function cleanupUnusedMedia(usedData: unknown) {
-    const usedKeys = collectMediaStorageKeys(usedData);
-    await videoLogStore.iterate((value) => { collectMediaStorageKeys(value, usedKeys); });
-    const unused: string[] = [];
-    await store.iterate((_value, key) => {
-        if (!usedKeys.has(key)) unused.push(key);
-    });
-    await deleteStoredMedia(unused);
+export async function cleanupUnusedMedia(_usedData:unknown) {
+    // Legacy browser objects remain sealed; automatic cleanup waits for server references and explicit policy.
 }
 
 export function collectMediaStorageKeys(value: unknown, keys = new Set<string>()) {

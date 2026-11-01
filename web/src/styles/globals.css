@@ -1,3 +1,4 @@
+@layer antd-reset, theme, base, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -486,6 +487,8 @@
         border-radius: 999px;
     }
 
+
+
     .hover-scrollbar {
         scrollbar-color: transparent transparent;
         scrollbar-width: thin;
@@ -710,6 +713,11 @@
     overflow-wrap: anywhere;
 }
 
+.agent-bubble p {
+    margin: 0;
+}
+
+
 .agent-streamdown > :first-child {
     margin-top: 0;
 }
@@ -851,4 +859,49 @@
     padding: 0.5rem 0.8rem;
     border-radius: 0.6rem;
     font-size: 0.75rem;
+}
+
+.generation-settings-popover .ant-popover-container,
+.generation-settings-popover .ant-popover-inner,
+.generation-settings-popover .ant-popover-content {
+    overflow: hidden !important;
+}
+
+.grok-scrollbar {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(17, 24, 39, 0.35) transparent;
+}
+
+.grok-scrollbar::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+    background: transparent;
+}
+
+.grok-scrollbar::-webkit-scrollbar-track,
+.grok-scrollbar::-webkit-scrollbar-corner,
+.grok-scrollbar::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+}
+
+.grok-scrollbar::-webkit-scrollbar-thumb {
+    border: 0;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.28);
+}
+
+.grok-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(17, 24, 39, 0.45);
+}
+
+.dark .grok-scrollbar {
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+.dark .grok-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.32);
 }

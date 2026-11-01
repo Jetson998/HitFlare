@@ -102,24 +102,22 @@ function ImageSettingsPortal({
         width,
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
         ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap, maxHeight: Math.max(260, buttonRect.top - margin * 2) } : { top: buttonRect.bottom + gap, maxHeight: Math.max(260, window.innerHeight - buttonRect.bottom - margin * 2) }),
-        background: theme.toolbar.panel,
-        borderRadius: 18,
-        boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
-        padding: 18,
+        borderRadius: 20,
+        boxShadow: "0 12px 40px rgba(15,23,42,.1)",
+        padding: "16px 20px",
         overflowY: "auto",
-        color: theme.node.text,
     } as const;
 
     return createPortal(
         <div
             ref={panelRef}
-            className="canvas-image-settings-popover"
+            className="grok-scrollbar bg-white text-[#111827] dark:bg-stone-900 dark:text-stone-100"
             style={style}
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" />
+            <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} tone="plain" className="space-y-4" />
         </div>,
         document.body,
     );

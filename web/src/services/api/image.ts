@@ -1,3 +1,6 @@
+import {pluginImageTracking,trackedImageRequest,type GenerationContext} from "./generations";
+import {providerApiError} from "./provider-error";
+import {fetchRuntimeSecret,workspaceJson} from "@/services/api/workspace";
 import axios from "axios";
 
 import i18n from "@/i18n";
@@ -95,7 +98,7 @@ type GeminiPayload = {
     promptFeedback?: { blockReason?: string };
 };
 type GeminiStreamState = { buffer: string; text: string; toolCalls: ResponseToolCall[]; error?: string };
-type RequestOptions = { signal?: AbortSignal };
+type RequestOptions = { signal?: AbortSignal; generation?: GenerationContext };
 
 const QUALITY_BASE: Record<string, number> = {
     low: 1024,
@@ -199,6 +202,13 @@ function resolveRequestSize(quality: string | undefined, size: string) {
     }
     if (value.includes(":")) return resolveSize(quality, value);
     throw new Error(apiText("invalidImageSizeFormat"));
+}
+
+export function openAIImageFields(config: AiConfig) {
+    const quality = normalizeQuality(config.quality);
+    const size = resolveRequestSize(quality, config.size);
+    const background = normalizeBackground(config.background);
+    return {...(quality ? {quality} : {}), ...(size ? {size} : {}), ...(background ? {background} : {})};
 }
 
 function resolveGeminiImageConfig(config: AiConfig) {
@@ -693,15 +703,14 @@ async function requestGeminiImagesOnce(config: AiConfig, prompt: string, referen
     for (const image of references) {
         parts.push(toGeminiImagePart(await imageToDataUrl(image)));
     }
-    const response = await axios.post<GeminiPayload>(
+    return trackedImageRequest(options?.generation,()=>axios.post<GeminiPayload>(
         geminiApiUrl(config, "generateContent"),
         {
             ...toGeminiBody(config, [{ role: "user", content: prompt }], { generationConfig: { responseModalities: ["TEXT", "IMAGE"], ...resolveGeminiImageConfig(config) } }),
             contents: [{ role: "user", parts }],
         },
         { headers: geminiHeaders(config), signal: options?.signal },
-    );
-    return parseGeminiImagePayload(response.data);
+    ),parseGeminiImagePayload);
 }
 
 function parseGeminiImagePayload(payload: GeminiPayload) {
@@ -721,7 +730,7 @@ function parseGeminiImagePayload(payload: GeminiPayload) {
 }
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
-    const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    const requestConfig = await resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const script = resolveModelScript(config, config.model || config.imageModel);
     if (script) {
@@ -737,24 +746,26 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 images: [],
                 params: { size: requestSize, quality, count: n, ...(background ? { background } : {}) },
                 signal: options?.signal,
+                generation: options?.generation,
             });
-            return normalizePluginImages(result).map((dataUrl) => ({ id: nanoid(), dataUrl }));
+            const images=normalizePluginImages(result);const tracking=await pluginImageTracking(options?.generation,images);
+            return images.map((dataUrl,outputIndex) => ({ id: nanoid(), dataUrl,tracking:tracking[outputIndex] }));
         } catch (error) {
-            throw new Error(readAxiosError(error, apiText("requestFailed")));
+            throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
         }
     }
     if (requestConfig.apiFormat === "gemini") {
         try {
             return await requestGeminiImages(requestConfig, prompt, [], n, options);
         } catch (error) {
-            throw new Error(readAxiosError(error, apiText("requestFailed")));
+            throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
         }
     }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
     const background = normalizeBackground(config.background);
     try {
-        const response = await axios.post<ImageApiResponse>(
+        return await trackedImageRequest(options?.generation,()=>axios.post<ImageApiResponse>(
             aiApiUrl(requestConfig, "/images/generations"),
             {
                 model: requestConfig.model,
@@ -771,16 +782,14 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 headers: aiHeaders(requestConfig, "application/json"),
                 signal: options?.signal,
             },
-        );
-        const images = await parseImagePayload(response.data);
-        return images;
+        ),parseImagePayload);
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("requestFailed")));
+        throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
     }
 }
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions) {
-    const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    const requestConfig = await resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const requestPrompt = buildImageReferencePromptText(prompt, references);
     const script = resolveModelScript(config, config.model || config.imageModel);
@@ -798,17 +807,19 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 images: refs,
                 params: { size: requestSize, quality, count: n, ...(background ? { background } : {}) },
                 signal: options?.signal,
+                generation: options?.generation,
             });
-            return normalizePluginImages(result).map((dataUrl) => ({ id: nanoid(), dataUrl }));
+            const images=normalizePluginImages(result);const tracking=await pluginImageTracking(options?.generation,images);
+            return images.map((dataUrl,outputIndex) => ({ id: nanoid(), dataUrl,tracking:tracking[outputIndex] }));
         } catch (error) {
-            throw new Error(readAxiosError(error, apiText("requestFailed")));
+            throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
         }
     }
     if (requestConfig.apiFormat === "gemini") {
         try {
             return await requestGeminiImages(requestConfig, requestPrompt, references, n, options);
         } catch (error) {
-            throw new Error(readAxiosError(error, apiText("requestFailed")));
+            throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
         }
     }
 
@@ -838,16 +849,14 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     files.forEach((file) => formData.append(imageField, file));
 
     try {
-        const response = await axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal });
-        const images = await parseImagePayload(response.data);
-        return images;
+        return await trackedImageRequest(options?.generation,()=>axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal }),parseImagePayload);
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("requestFailed")));
+        throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
     }
 }
 
 export async function requestImageQuestion(config: AiConfig, messages: AiTextMessage[], onDelta: (text: string) => void, options?: RequestOptions) {
-    const requestConfig = resolveModelRequestConfig(config, config.model || config.textModel);
+    const requestConfig = await resolveModelRequestConfig(config, config.model || config.textModel);
     const script = resolveModelScript(config, config.model || config.textModel);
     if (script) {
         try {
@@ -863,7 +872,7 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
             if (text === apiText("noContent")) onDelta(text);
             return text;
         } catch (error) {
-            throw new Error(readAxiosError(error, apiText("requestFailed")));
+            throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
         }
     }
     try {
@@ -880,7 +889,7 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
         if (answer === apiText("noContent")) onDelta(answer);
         return answer;
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("requestFailed")));
+        throw providerApiError(error,options?.generation?"图片模型请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("requestFailed")),requestConfig.apiKey);
     }
 }
 
@@ -904,12 +913,15 @@ export async function fetchImageModels(config: Pick<AiConfig, "baseUrl" | "apiKe
             .filter((id): id is string => Boolean(id))
             .sort((a, b) => a.localeCompare(b));
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("modelReadFailed")));
+        throw providerApiError(error,readAxiosError(error,apiText("modelReadFailed")),config.apiKey);
     }
 }
 
 export async function fetchChannelModels(channel: ModelChannel) {
-    return fetchImageModels({ baseUrl: channel.baseUrl, apiKey: channel.apiKey, apiFormat: channel.apiFormat });
+    const {hasApiKey,apiKeyMask,...input}=channel;
+    await workspaceJson("channels","POST",input);
+    const secret=await fetchRuntimeSecret(channel.id);
+    return fetchImageModels(secret);
 }
 
 const defaultGeminiConfig: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat" | "model" | "systemPrompt"> = {

@@ -15,10 +15,20 @@
 
 ## Development and Data
 
+- [HitFlare 服务化方案复审（基于 v0.18.3 线上代码）](hitflare/SERVICEIZATION_CURRENT_RELEASE_REVIEW.md)
+- [HitFlare 服务化阶段成果与验收记录](hitflare/SERVICEIZATION_STAGE_HISTORY.md)
+- [HitFlare 服务化分阶段开发与本地化测试计划](hitflare/SERVICEIZATION_PHASED_DEVELOPMENT_LOCAL_TEST_PLAN.md)
+- [HitFlare P1 基础底座交付与人工验收](hitflare/SERVICEIZATION_P1_ACCEPTANCE.md)
+- [HitFlare P2 配置与数据交付及人工验收](hitflare/SERVICEIZATION_P2_ACCEPTANCE.md)
+- [HitFlare P3 生成与调用交付及人工验收](hitflare/SERVICEIZATION_P3_ACCEPTANCE.md)
+- [HitFlare P4 画布与引用交付及人工验收](hitflare/SERVICEIZATION_P4_ACCEPTANCE.md)
+- [HitFlare P5 管理、恢复与总回归交付及人工验收](hitflare/SERVICEIZATION_P5_ACCEPTANCE.md)
+- [HitFlare P6 联调收尾与集中验收准备](hitflare/SERVICEIZATION_P6_ACCEPTANCE.md)
 - [HitFlare 服务化开发排期与权限、用户体系对接方案](hitflare/SERVICE_COLLABORATION_PERMISSION_INTEGRATION_PLAN.md)
 - [HitFlare 服务化与权限体系验收测试用例](hitflare/SERVICE_AND_PERMISSION_ACCEPTANCE_TEST_CASES.md)
 - [HitFlare 后端需求清单：权限依赖与用户数据服务端化](hitflare/BACKEND_ASSET_CANVAS_SERVICE_REQUIREMENTS.md)
 - [HitFlare UI 统一方案 V2](hitflare/UI_IMPLEMENTATION_PLAN_V2.md)
+- [Grok Bot Mac 版体验调研](hitflare/GROK_BOT_MAC_UX_RESEARCH.md)
 - [HitFlare 多租户多用户、数据隔离与权限方案](hitflare/MULTI_TENANT_USER_DATA_ISOLATION_PLAN.md)
 - [HitFlare 反推提示词功能方案](hitflare/REVERSE_PROMPT_FEATURE_PLAN.md)
 - [HitFlare 视觉拆解与反推提示词升级方案（图片优先）](hitflare/VISUAL_ANALYSIS_AND_REVERSE_PROMPT_UPGRADE_PLAN.md)
@@ -49,5 +59,5 @@
 
 ## Notes
 
-- Canvas projects and My Assets are primarily stored in the browser. WebDAV can be configured for cross-device synchronization.
-- The AI API key is stored in the browser, which sends requests directly to OpenAI-compatible endpoints.
+- The deployed baseline uses browser-local assets and canvas data. The local P2–P6 candidate stores account data on the server and disables the old browser WebDAV sync; human acceptance is pending.
+- The local candidate encrypts API keys on the server. Browser model calls use the owner's authenticated runtime-secret endpoint; Agent and reverse-prompt calls resolve credentials on the server.

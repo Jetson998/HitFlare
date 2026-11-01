@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lookup } from "node:dns/promises";
 import { performance } from "node:perf_hooks";
-import { Agent, fetch as providerFetch } from "undici";
-import ipaddr from "ipaddr.js";
+import { createProviderTransport, validateProviderUrl } from "../provider-network.mjs";
+import {safeUsage,safeCode} from "../call-metadata.mjs";
+import { readProviderFailure } from "../call-metadata.mjs";
+export { validateProviderUrl } from "../provider-network.mjs";
 import { z } from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
 import { createParser } from "eventsource-parser";
@@ -59,6 +60,17 @@ export class ReversePromptModelError extends Error {
     }
 }
 
+
+function withAuthoredMediumFact(value) {
+    if (value.facts.some(fact => fact.dimension === "medium")) return value;
+    const description = value.styleProfile.medium.trim();
+    if (!description) return value;
+    const ids = new Set(value.facts.map(fact => fact.id));
+    let id = "medium";
+    while (ids.has(id)) id += "-2";
+    return { ...value, facts: [...value.facts, { id, dimension: "medium", description, status: "observed", evidence: description }], styleProfile: { ...value.styleProfile, factIds: value.styleProfile.factIds.includes(id) ? value.styleProfile.factIds : [...value.styleProfile.factIds, id] } };
+}
+
 export function parseObservation(raw, timings = {}) {
     const parseStartedAt = performance.now();
     let value;
@@ -72,7 +84,7 @@ export function parseObservation(raw, timings = {}) {
         throw new ReversePromptModelError("首轮图片分析未通过结构校验，请手动重新分析", undefined, "OBSERVATION_SCHEMA_INVALID", "observation-schema", { issues: parsed.error.issues.map(issue => ({ path: issue.path.join("."), code: issue.code })) });
     }
     const referencesStartedAt = performance.now();
-    const references = observationReferences.safeParse(parsed.data);
+    const references = observationReferences.safeParse(withAuthoredMediumFact(parsed.data));
     timings.referenceValidationMs = performance.now() - referencesStartedAt;
     if (!references.success) throw new ReversePromptModelError("首轮图片分析的事实维度或引用关系无效，请手动重新分析", undefined, "OBSERVATION_REFERENCE_INVALID", "observation-references", { issues: references.error.issues.map(issue => ({ path: issue.path.join("."), code: issue.message })) });
     return references.data;
@@ -93,28 +105,12 @@ export function createModelIdentity(config) {
     return { value: config.modelValue, label: config.modelLabel, settingsHash: settingsHash(config) };
 }
 
-export function validateProviderUrl(value) {
-    try {
-        const url = new URL(value);
-        const host = url.hostname.replace(/^\[|\]$/g, "");
-        return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash && (!ipaddr.isValid(host) || publicAddress(host));
-    } catch { return false; }
-}
-function publicAddress(value) {
-    try { return ipaddr.process(value).range() === "unicast"; } catch { return false; }
-}
-
 export function createReversePromptModel(config, fetchImpl) {
     const normalized = { ...config, baseUrl: String(config.baseUrl || "").trim().replace(/\/+$/, ""), model: String(config.model || "").trim(), apiFormat: config.apiFormat === "gemini" ? "gemini" : "openai" };
     if (!validateProviderUrl(normalized.baseUrl) || !normalized.apiKey || !normalized.model) throw new ReversePromptModelError("反推模型渠道配置不完整", undefined, "MODEL_CONFIG_INVALID", "model-config");
-    const dispatcher = fetchImpl ? null : new Agent({ connect: { lookup(hostname, options, callback) {
-        lookup(hostname, { all: true, verbatim: true }).then(addresses => {
-            if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new ReversePromptModelError("模型渠道解析到了内网地址，请使用公开渠道地址");
-            if (options.all) callback(null, addresses);
-            else callback(null, addresses[0].address, addresses[0].family);
-        }).catch(error => callback(error));
-    } } });
-    normalized.fetch = fetchImpl || ((url, options) => providerFetch(url, { ...options, dispatcher }));
+    const transport = fetchImpl ? null : createProviderTransport();
+    normalized.fetch = fetchImpl || transport.fetch;
+    normalized.secrets = [normalized.apiKey];
     let lastDiagnostics;
     const request = async (messages, onText, signal, diagnostics, onDiagnostics, onPreview) => {
         lastDiagnostics = diagnostics;
@@ -163,7 +159,7 @@ export function createReversePromptModel(config, fetchImpl) {
             { role: "user", content: buildPromptUserPrompt(analysis) },
         ].filter(item => item.content), onText, signal, { phase: "refine", input: { imageBytes: 0, imageBase64Chars: 0 } }, onDiagnostics),
         getLastDiagnostics: () => lastDiagnostics ? structuredClone(lastDiagnostics) : undefined,
-        close: () => dispatcher?.close(),
+        close: () => transport?.close(),
     };
 }
 
@@ -171,7 +167,7 @@ async function requestOpenAI(config, messages, onText, signal, diagnostics, repo
     const base = /\/v1$/i.test(config.baseUrl) ? config.baseUrl : `${config.baseUrl}/v1`;
     const input = messages.map(message => ({ role: message.role, content: Array.isArray(message.content) ? message.content.map(item => item.type === "text" ? { type: "input_text", text: item.text } : { type: "input_image", image_url: item.image_url.url }) : message.content }));
     const response = await config.fetch(`${base}/responses`, { method: "POST", redirect: "error", headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json", Accept: "text/event-stream" }, body: JSON.stringify({ model: config.model, input, stream: true, ...(diagnostics.phase === "observe" ? { text: { format: observationFormat } } : {}), ...(config.reasoningEffort && config.reasoningEffort !== "auto" ? { reasoning: { effort: config.reasoningEffort } } : {}) }), signal });
-    return readModelStream(response, onText, signal, "openai", diagnostics, report, elapsed, onPreview);
+    return readModelStream(response, onText, signal, "openai", diagnostics, report, elapsed, onPreview,config.secrets);
 }
 
 async function requestGemini(config, messages, onText, signal, diagnostics, report, elapsed, onPreview) {
@@ -179,19 +175,24 @@ async function requestGemini(config, messages, onText, signal, diagnostics, repo
     const system = messages.filter(message => message.role === "system").map(message => String(message.content)).filter(Boolean).join("\n\n");
     const contents = messages.filter(message => message.role !== "system").map(message => ({ role: "user", parts: Array.isArray(message.content) ? message.content.map(item => item.type === "text" ? { text: item.text } : { inlineData: { mimeType: item.image_url.url.match(/^data:([^;]+);/)?.[1] || "image/png", data: item.image_url.url.split(",")[1] } }) : [{ text: message.content }] }));
     const response = await config.fetch(`${base}/models/${encodeURIComponent(config.model.replace(/^models\//, ""))}:streamGenerateContent?alt=sse`, { method: "POST", redirect: "error", headers: { "x-goog-api-key": config.apiKey, "Content-Type": "application/json", Accept: "text/event-stream" }, body: JSON.stringify({ contents, ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}) }), signal });
-    return readModelStream(response, onText, signal, "gemini", diagnostics, report, elapsed, onPreview);
+    return readModelStream(response, onText, signal, "gemini", diagnostics, report, elapsed, onPreview,config.secrets);
 }
 
-async function readModelStream(response, onText, signal, format, diagnostics, report, elapsed, onPreview) {
+async function readModelStream(response, onText, signal, format, diagnostics, report, elapsed, onPreview,secrets) {
     const stamp = name => {
         diagnostics[name] = new Date().toISOString();
         diagnostics[name.replace(/At$/, "Ms")] = elapsed();
     };
+    diagnostics.httpStatus=response.status;
+    diagnostics.providerRequestId=safeCode(response.headers.get("x-request-id"),secrets);
     stamp("responseHeadersAt");
     report();
     if (!response.ok || !response.body || !response.headers.get("content-type")?.includes("text/event-stream")) {
+        if (!response.ok) {
+            const meta=await readProviderFailure(response,secrets);
+            throw Object.assign(new ReversePromptModelError(providerError(response.status),response.status,"PROVIDER_HTTP_ERROR","model-request"),meta);
+        }
         response.body?.cancel().catch(() => undefined);
-        if (!response.ok) throw new ReversePromptModelError(providerError(response.status), response.status, "PROVIDER_HTTP_ERROR", "model-request");
         throw new ReversePromptModelError("模型服务未返回有效的流式响应", undefined, "STREAM_INVALID", "read-stream");
     }
     let text = "";
@@ -221,6 +222,7 @@ async function readModelStream(response, onText, signal, format, diagnostics, re
     };
     const usage = value => {
         if (!value) return;
+        diagnostics.rawUsage=safeUsage(value);
         const counts = format === "openai" ? { inputTokens: value.input_tokens, outputTokens: value.output_tokens, totalTokens: value.total_tokens, cachedTokens: value.input_tokens_details?.cached_tokens, reasoningTokens: value.output_tokens_details?.reasoning_tokens } : { inputTokens: value.promptTokenCount, outputTokens: value.candidatesTokenCount, totalTokens: value.totalTokenCount, cachedTokens: value.cachedContentTokenCount, reasoningTokens: value.thoughtsTokenCount };
         diagnostics.usage = Object.fromEntries(Object.entries(counts).filter(([, count]) => typeof count === "number" && Number.isFinite(count) && count >= 0));
     };
@@ -231,7 +233,7 @@ async function readModelStream(response, onText, signal, format, diagnostics, re
         let value;
         try { value = JSON.parse(event.data); } catch { throw new ReversePromptModelError("模型流式响应格式无效", undefined, "STREAM_INVALID", "read-stream"); }
         if (!value || typeof value !== "object" || Array.isArray(value)) throw new ReversePromptModelError("模型流式响应格式无效", undefined, "STREAM_INVALID", "read-stream");
-        if (value.error || ["error", "response.failed", "response.incomplete"].includes(value.type) || value.promptFeedback?.blockReason) throw new ReversePromptModelError("模型未完整返回结果，请手动重试", undefined, "MODEL_INCOMPLETE", "model-request");
+        if (value.error || ["error", "response.failed", "response.incomplete"].includes(value.type) || value.promptFeedback?.blockReason) throw Object.assign(new ReversePromptModelError("模型未完整返回结果，请手动重试",response.status,"MODEL_INCOMPLETE","model-request"),{providerCode:safeCode(value.error?.code ?? value.response?.error?.code,secrets),providerType:safeCode(value.error?.type ?? value.response?.error?.type,secrets),providerRequestId:diagnostics.providerRequestId});
         if (format === "openai") {
             if (["response.refusal.delta", "response.refusal.done"].includes(value.type)) throw new ReversePromptModelError("模型拒绝分析这张图片，请调整输入后手动重试", undefined, "MODEL_REFUSED", "read-stream");
             if (value.type === "response.output_text.delta" && typeof value.delta === "string") { text += value.delta; emit(text); }
@@ -249,6 +251,7 @@ async function readModelStream(response, onText, signal, format, diagnostics, re
             const chunk = (candidate?.content?.parts || []).filter(part => !part.thought).map(part => part.text || "").join("");
             if (chunk) { text += chunk; emit(text); }
             usage(value.usageMetadata);
+            if(candidate?.finishReason)diagnostics.finishReason=safeCode(candidate.finishReason,secrets);
             if (candidate?.finishReason === "STOP") completed();
         }
     }, onError() { if (!completionSeen) throw new ReversePromptModelError("模型流式响应格式无效", undefined, "STREAM_INVALID", "read-stream"); } });

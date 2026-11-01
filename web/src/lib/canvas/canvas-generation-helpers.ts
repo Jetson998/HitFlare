@@ -35,8 +35,9 @@ export async function resolveMetadataReferences(metadata: CanvasNodeMetadata) {
     if (!metadata.references?.length) return null;
     const references = await Promise.all(
         metadata.references.map(async (url, index) => {
-            const dataUrl = url.startsWith("image:") ? await resolveImageUrl(url, "") : url;
-            return dataUrl ? { id: `${index}`, name: `reference-${index}.png`, type: "image/png", dataUrl, storageKey: url.startsWith("image:") ? url : undefined } : null;
+            const storageKey = url.match(/^\/api\/workspace\/media\/([^/]+)\/content$/)?.[1] || (/^[a-f0-9-]{36}$/i.test(url) ? url : undefined);
+            const dataUrl = storageKey ? await resolveImageUrl(storageKey, "") : url;
+            return dataUrl ? { id: `${index}`, name: `reference-${index}.png`, type: "image/png", dataUrl, storageKey } : null;
         }),
     );
     return references.every(Boolean) ? (references as ReferenceImage[]) : null;

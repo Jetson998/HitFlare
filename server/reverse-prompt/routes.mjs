@@ -1,20 +1,18 @@
+import {readImageForm} from "../media-upload.mjs";
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { fileTypeFromBuffer } from "file-type";
 import { imageSize } from "image-size";
 import { z } from "zod";
+import { providerFailure } from "../call-metadata.mjs";
 import { InputError } from "../catalog.mjs";
-import { sameOrigin } from "../auth.mjs";
+import { requireAuthenticated, sameOrigin } from "../auth.mjs";
 import { createReversePromptStore, DIAGNOSTICS_VERSION } from "./storage.mjs";
 import { createModelIdentity, createReversePromptModel, makeAnalysis, makePrompt, parseObservation, promptIssues, ReversePromptModelError, validateProviderUrl } from "./model.mjs";
+import { previewEdge, previewImage, sendCachedImage } from "../media-preview.mjs";
 
 const RUNNING = new Set(["queued", "analyzing", "refining"]);
-const configSchema = z.strictObject({
-    baseUrl: z.string().trim().min(1).refine(validateProviderUrl), apiKey: z.string().trim().min(1),
-    apiFormat: z.enum(["openai", "gemini"]), model: z.string().trim().min(1),
-    modelValue: z.string().trim().min(1), modelLabel: z.string().trim().min(1),
-    channelId: z.string().optional(), systemPrompt: z.string(), reasoningEffort: z.enum(["auto", "low", "medium", "high", "xhigh"]),
-});
+const configSchema = z.strictObject({channelId:z.string().trim().min(1),model:z.string().trim().min(1)});
 const requestSchema = z.strictObject({ requestId: z.uuid(), config: configSchema });
 
 function parseRequest(data) {
@@ -23,16 +21,27 @@ function parseRequest(data) {
     return parsed.data;
 }
 
-export async function createReversePromptService({ dataDir, auth, modelFactory = createReversePromptModel }) {
+export async function createReversePromptService({ dataDir, auth, workspace, modelFactory = createReversePromptModel }) {
     const store = await createReversePromptStore(dataDir);
     const jobs = new Map();
     const connections = new Set();
+    const stopLifecycle = auth.onLifecycle(event => {
+        if (!event.userId) return;
+        for (const connection of connections) if (connection.userId === event.userId && (!event.sessionId || connection.sessionId === event.sessionId)) connection.res.end();
+        if (event.reason !== "disabled") return;
+        for (const job of jobs.values()) {
+            if (job.userId !== event.userId) continue;
+            const state = store.get(job.userId, job.id);
+            if (RUNNING.has(state.status)) change(job.userId, job.id, task => { fallback(task, "stopped"); finish(task, "stopped", "账号已停用", { code: "ACCOUNT_DISABLED", stage: "permission-revocation" }); });
+            job.controller.abort(new Error("account-disabled"));
+        }
+    });
 
     function publish(state) {
         const snapshot = store.publicSnapshot(state);
         for (const connection of connections) {
             if (connection.userId !== state.userId || (connection.taskId && connection.taskId !== state.id)) continue;
-            if (auth.userFromRequest(connection.req)?.id !== state.userId) { connection.res.end(); continue; }
+            if (auth.userFromRequest(connection.req)?.sessionId !== connection.sessionId) { connection.res.end(); continue; }
             connection.res.write(`event: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
         }
         return state;
@@ -47,7 +56,12 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
 
     // HTTP and SSE lifetimes do not own this job or its AbortController.
     function start(userId, input, image, retryOf) {
-        const { apiKey, ...publicConfig } = input.config;
+        const publicConfig=input.config;
+        const resolved=workspace.modelConfig(userId,input.config.channelId,input.config.model,"text");
+        if(!validateProviderUrl(resolved.baseUrl)) throw new InputError("服务器模型渠道必须使用公开地址",403);
+        const channel=workspace.listChannels(userId).find(item=>item.id===resolved.id);
+        const settings=workspace.preferences(userId);
+        input={...input,config:{...resolved,channelId:resolved.id,modelValue:`${resolved.id}::${resolved.model}`,modelLabel:`${resolved.model}（${channel.name}）`,systemPrompt:settings.systemPrompt,reasoningEffort:settings.reasoningEffort}};
         const inputHash = createHash("sha256").update(JSON.stringify({ imageHash: image.imageHash, config: publicConfig, retryOf: retryOf || null })).digest("hex");
         const created = store.create(userId, { ...image, requestId: input.requestId, inputHash, retryOf, modelValue: input.config.modelValue, modelLabel: input.config.modelLabel, apiFormat: input.config.apiFormat, channelId: input.config.channelId });
         if (created.created) {
@@ -62,11 +76,14 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
         job.started = performance.now();
         let model;
         let phase = "observe";
+        let callId;
         const parseTimings = {};
         let previewTimer;
         let pendingPreview;
+        const callDiagnostics={};
         let lastPreviewWrite = -Infinity;
         const recordDiagnostics = diagnostics => {
+            callDiagnostics[phase]=diagnostics;
             if (job.controller.signal.aborted) return;
             activeChange(job, task => { task.diagnostics = { ...task.diagnostics, [phase]: { ...task.diagnostics?.[phase], ...diagnostics } }; });
         };
@@ -95,7 +112,10 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
             model = modelFactory(job.config);
             const identity = createModelIdentity(job.config);
             activeChange(job, task => { task.diagnostics.modelCallCount = 1; });
+            callId=workspace.recordCall(job.userId,{taskId:job.id,subsystem:"reverse",phase:"observe",model:job.config.model,requestId:initial.requestId,channelId:job.config.channelId,baseUrl:job.config.baseUrl});
             const raw = await model.observe({ ...initial.source, imageBytes: store.image(job.userId, job.id).bytes }, job.controller.signal, recordDiagnostics, recordPreview);
+            workspace.finishCall(job.userId,callId,"succeeded",{upstreamStatus:callDiagnostics[phase]?.httpStatus ?? null,usage:callDiagnostics[phase]?.rawUsage || null,providerRequestId:callDiagnostics[phase]?.providerRequestId || null,upstreamFinishReason:callDiagnostics[phase]?.finishReason || null,producedOutputCount:1});
+            callId=undefined;
             clearTimeout(previewTimer);
             flushPreview();
             activeChange(job, task => { task.stage = "validating-analysis"; });
@@ -111,10 +131,13 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
             job.controller.signal.throwIfAborted();
             phase = "refine";
             activeChange(job, task => { task.diagnostics.observe.publishMs = publishMs; task.diagnostics.modelCallCount = 2; });
+            callId=workspace.recordCall(job.userId,{taskId:job.id,subsystem:"reverse",phase:"refine",model:job.config.model,requestId:initial.requestId,channelId:job.config.channelId,baseUrl:job.config.baseUrl});
             const text = await model.refine(analysis, value => {
                 if (!value.trim() || job.controller.signal.aborted) return;
                 activeChange(job, task => { task.partialText = value; task.prompt = { ...task.prompt, modelText: value, updatedAt: Date.now() }; });
             }, job.controller.signal, recordDiagnostics);
+            workspace.finishCall(job.userId,callId,"succeeded",{upstreamStatus:callDiagnostics[phase]?.httpStatus ?? null,usage:callDiagnostics[phase]?.rawUsage || null,providerRequestId:callDiagnostics[phase]?.providerRequestId || null,upstreamFinishReason:callDiagnostics[phase]?.finishReason || null,producedOutputCount:1});
+            callId=undefined;
             activeChange(job, task => { task.stage = "validating-prompt"; });
             const validationStarted = performance.now();
             const issues = promptIssues(text);
@@ -133,6 +156,7 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
                 }
             });
         } catch (error) {
+            if(callId) workspace.finishCall(job.userId,callId,job.controller.signal.aborted ? "cancelled" : "failed",{...providerFailure(error,[job.config.apiKey]),upstreamStatus:error?.status ?? callDiagnostics[phase]?.httpStatus ?? null,usage:callDiagnostics[phase]?.rawUsage || null});
             const state = store.get(job.userId, job.id);
             const diagnostics = model?.getLastDiagnostics?.();
             if (!RUNNING.has(state.status)) {
@@ -155,22 +179,21 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
     }
 
     return {
+        readSource:(owner,id) => store.image(owner,id),
         async handle(req, res, url, json) {
             if (!url.pathname.startsWith("/api/reverse-prompt/")) return false;
-            const user = auth.userFromRequest(req);
-            if (!user) throw new InputError("请先登录", 401);
+            const user = requireAuthenticated(auth, req);
             const owner = req.headers["x-hitflare-user"] || url.searchParams.get("owner");
             if (owner !== user.id) throw new InputError("登录账号已改变，请刷新页面", 403);
             if (!["GET", "HEAD"].includes(req.method) && !sameOrigin(req)) throw new InputError("请求来源无效", 403);
-            const checkOwner = () => { if (auth.userFromRequest(req)?.id !== user.id) throw new InputError("请重新登录", 401); };
+            const checkOwner = () => { if (auth.userFromRequest(req)?.sessionId !== user.sessionId) throw new InputError("请重新登录", 401); };
             const path = url.pathname.slice("/api/reverse-prompt/".length);
             if (path === "tasks" && req.method === "POST") {
-                const form = await new Request("http://localhost", { method: "POST", headers: { "content-type": req.headers["content-type"] || "" }, body: req, duplex: "half" }).formData().catch(() => { throw new InputError("图片上传格式无效"); });
+                const {fields,file}=await readImageForm(req,"image");
                 let input;
-                try { input = parseRequest(JSON.parse(String(form.get("request")))); } catch (error) { if (error instanceof InputError) throw error; throw new InputError("请求配置格式无效"); }
-                const file = form.get("image");
-                if (!(file instanceof File)) throw new InputError("请选择参考图片");
-                const bytes = Buffer.from(await file.arrayBuffer());
+                try {input=parseRequest(JSON.parse(String(fields.get("request"))));} catch(error) {if(error instanceof InputError) throw error;throw new InputError("请求配置格式无效");}
+                if(!file?.bytes) throw new InputError("请选择参考图片");
+                const bytes=file.bytes;
                 const format = await fileTypeFromBuffer(bytes);
                 if (!format || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(format.mime)) throw new InputError("请上传 PNG、JPEG、WebP 或 GIF 图片");
                 let size;
@@ -195,8 +218,10 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
             if (!action && req.method === "GET") return json(res, 200, store.publicSnapshot(task));
             if (action === "image" && req.method === "GET") {
                 const image = store.image(user.id, id);
-                res.writeHead(200, { "Content-Type": image.mime, "Content-Length": image.bytes.length, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
-                return res.end(image.bytes);
+                const edge = previewEdge(url.searchParams.get("edge"));
+                const preview = await previewImage(image.bytes, image.mime, edge);
+                const body = preview || { bytes: image.bytes, mime: image.mime };
+                return sendCachedImage(res, req, { ...body, etag: `"${id}${edge ? ":" + edge : ""}"` });
             }
             if (action === "events" && req.method === "GET") return events(req, res, user, id);
             if (action === "stop" && req.method === "POST") {
@@ -218,6 +243,7 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
             throw new InputError("请求方法不支持", 405);
         },
         async close() {
+            stopLifecycle();
             for (const connection of connections) connection.res.end();
             const pending = [...jobs.values()];
             for (const job of pending) {
@@ -232,8 +258,9 @@ export async function createReversePromptService({ dataDir, auth, modelFactory =
     };
 
     function events(req, res, user, taskId) {
+        auth.watchSession(req, res);
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", "X-Accel-Buffering": "no" });
-        const connection = { req, res, userId: user.id, taskId };
+        const connection = { req, res, userId: user.id, sessionId: user.sessionId, taskId };
         connections.add(connection);
         res.on("close", () => connections.delete(connection));
         // Every reconnect receives a snapshot/ready notice; it never starts a model call.

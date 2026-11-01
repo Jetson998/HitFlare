@@ -17,12 +17,13 @@ import { useUserStore } from "@/stores/use-user-store";
 
 type UserStatusActionsProps = {
     showConfig?: boolean;
-    variant?: "default" | "canvas";
+    variant?: "default" | "canvas" | "sidebar";
+    collapsed?: boolean;
     onOpenShortcuts?: () => void;
     onOpenPlugins?: () => void;
 };
 
-export function UserStatusActions({ showConfig = true, variant = "default", onOpenShortcuts, onOpenPlugins }: UserStatusActionsProps) {
+export function UserStatusActions({ showConfig = true, variant = "default", collapsed = false, onOpenShortcuts, onOpenPlugins }: UserStatusActionsProps) {
     const { message } = App.useApp();
     const { i18n, t } = useTranslation();
     const [passwordForm] = Form.useForm<{ currentPassword: string; password: string; confirmPassword: string }>();
@@ -89,11 +90,11 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
 
     return (
         <>
-        <div className="inline-flex shrink-0 items-center gap-1">
-            <div className={cn("flex items-center gap-1", variant === "default" && "hidden @min-[640px]/shell:flex")}>{utilityActions}</div>
+        <div className={cn("inline-flex shrink-0 items-center gap-1", variant === "sidebar" && "flex-wrap", variant === "sidebar" && collapsed && "@min-[960px]/app:w-full @min-[960px]/app:flex-col @min-[960px]/app:items-center")}>
+            <div className={cn("flex items-center gap-1", variant === "default" && "hidden @min-[640px]/shell:flex", variant === "sidebar" && "flex-wrap", variant === "sidebar" && collapsed && "@min-[960px]/app:flex-col @min-[960px]/app:items-center")}>{utilityActions}</div>
             {variant === "default" ? (
                 <div className="@min-[640px]/shell:hidden">
-                    <Popover trigger="click" placement="bottomRight" content={<div className="flex flex-wrap items-center gap-1">{utilityActions}</div>}>
+                    <Popover trigger="click" placement={variant === "sidebar" ? "topLeft" : "bottomRight"} content={<div className="flex flex-wrap items-center gap-1">{utilityActions}</div>}>
                         <button type="button" className={naturalIconClass} aria-label={t("topNav.more")} title={t("topNav.more")}><MoreHorizontal className="size-4" /></button>
                     </Popover>
                 </div>
@@ -101,7 +102,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
             {user ? (
                 <Dropdown
                     trigger={["click"]}
-                    placement="bottomRight"
+                    placement={variant === "sidebar" ? (collapsed ? "rightBottom" : "topLeft") : "bottomRight"}
                     menu={{
                         items: [
                             { key: "identity", label: <div><div className="font-medium">{userDisplayName}</div><div className="text-xs text-stone-500">{user.email || ""}</div></div>, disabled: true },
@@ -115,7 +116,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                         },
                     }}
                 >
-                    <button type="button" className={`${naturalIconClass} ml-1 rounded-full bg-stone-100 text-xs font-semibold dark:bg-stone-800`} aria-label={t("auth.account")} title={userDisplayName}>
+                    <button type="button" className={cn(naturalIconClass, "rounded-full bg-stone-100 text-xs font-semibold dark:bg-stone-800", !(variant === "sidebar" && collapsed) && "ml-1")} aria-label={t("auth.account")} title={userDisplayName}>
                         {userDisplayName.slice(0, 1).toUpperCase()}
                     </button>
                 </Dropdown>

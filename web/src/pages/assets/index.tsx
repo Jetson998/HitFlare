@@ -1,6 +1,7 @@
 import { Copy, Download, Eye, LayoutGrid, List, MoreHorizontal, Music, PencilLine, Plus, RefreshCw, Repeat2, Search, Star, Trash2, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Card, Dropdown, Empty, Form, Image, Input, Modal, Pagination, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { App, Button, Card, Dropdown, Empty, Form, Input, Modal, Pagination, Segmented, Select, Space, Tag, Typography } from "antd";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +16,8 @@ import { useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/st
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
 import type { ReferenceImage } from "@/types/image";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
+import { sessionIdentity, assertWorkspaceSession } from "@/services/api/workspace";
+import { mediaPreviewSrc } from "@/lib/media-preview";
 
 type AssetFormValues = {
     kind: AssetKind;
@@ -39,6 +42,7 @@ export default function AssetsPage() {
     const coverInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const assetInputRef = useRef<HTMLInputElement>(null);
+    const assetError=useAssetStore(state=>state.error);
     const assets = useAssetStore((state) => state.assets);
     const addAsset = useAssetStore((state) => state.addAsset);
     const updateAsset = useAssetStore((state) => state.updateAsset);
@@ -92,9 +96,9 @@ export default function AssetsPage() {
         return [...groups.entries()];
     }, [visibleAssets]);
 
-    const toggleFavorite = (asset: Asset) => {
+    const toggleFavorite = async (asset: Asset) => {
         const favorite = asset.metadata?.favorite !== true;
-        updateAsset(asset.id, { metadata: { ...asset.metadata, favorite } });
+        try {await updateAsset(asset.id, { metadata: { ...asset.metadata, favorite } });} catch(error) {message.error(error instanceof Error ? error.message : "收藏保存失败");}
     };
 
     useEffect(() => {
@@ -129,6 +133,7 @@ export default function AssetsPage() {
     };
 
     const saveAsset = async () => {
+        try {
         const values = await form.validateFields();
         const base = {
             title: values.title.trim(),
@@ -142,22 +147,23 @@ export default function AssetsPage() {
 
         if (values.kind === "text") {
             const asset = { ...base, kind: "text" as const, data: { content: (values.content || "").trim() } };
-            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
+            await (editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset));
         } else if (values.kind === "image") {
             if (!imageDraft) {
                 message.error(t("assets.selectImage"));
                 return;
             }
             const asset = { ...base, kind: "image" as const, data: imageDraft };
-            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
+            await (editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset));
         } else {
             if (!mediaDraft || mediaDraft.kind !== values.kind) { message.error("请选择对应的媒体文件"); return; }
             const asset = { ...base, kind: mediaDraft.kind, data: { ...mediaDraft.data, width: mediaDraft.data.width || 0, height: mediaDraft.data.height || 0 } };
-            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
+            await (editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset));
         }
 
         message.success(editingAsset ? t("assets.updated") : t("assets.saved"));
         setIsAssetOpen(false);
+        } catch(error) {message.error(error instanceof Error ? error.message : "资产保存失败，输入已保留");}
     };
 
     const readCoverFile = async (file?: File) => {
@@ -179,7 +185,7 @@ export default function AssetsPage() {
                 setMediaDraft({ kind: formKind, data: await uploadMediaFile(file, formKind) });
             }
             if (!form.getFieldValue("title")) form.setFieldValue("title", file.name);
-        } catch { message.error("文件保存失败，请重新选择"); }
+        } catch(error) { message.error(error instanceof Error ? error.message : "文件保存失败，请重新选择"); }
         finally { setReadingFile(false); }
     };
 
@@ -191,7 +197,9 @@ export default function AssetsPage() {
     const downloadImage = async (asset: Asset) => {
         if (asset.kind === "text") return;
         try {
+            const identity = sessionIdentity();
             const blob = await readAssetMediaBlob(asset);
+            assertWorkspaceSession(identity);
             if (!blob) {
                 message.error(t("assets.downloadFailed"));
                 return;
@@ -215,31 +223,37 @@ export default function AssetsPage() {
     const importAssetZip = async (file?: File) => {
         if (!file) return;
         try {
+            const identity = sessionIdentity();
             const importedAssets = await readAssetPackage(file);
-            importedAssets.forEach((asset) => {
+            for (const asset of importedAssets) {
+                assertWorkspaceSession(identity);
                 const payload = { ...asset } as Record<string, unknown>;
                 delete payload.id;
                 delete payload.createdAt;
                 delete payload.updatedAt;
-                addAsset(payload as Parameters<typeof addAsset>[0]);
-            });
+                await addAsset(payload as Parameters<typeof addAsset>[0]);
+            }
+            assertWorkspaceSession(identity);
             message.success(t("assets.imported", { count: importedAssets.length }));
-        } catch {
-            message.error(t("assets.importFailed"));
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : t("assets.importFailed"));
         } finally {
             if (assetInputRef.current) assetInputRef.current.value = "";
         }
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (!deletingAsset) return;
-        removeAsset(deletingAsset.id);
+        try {
+        await removeAsset(deletingAsset.id);
         message.success(t("assets.deleted"));
         setDeletingAsset(null);
+        } catch(error) {message.error(error instanceof Error ? error.message : "资产删除失败");}
     };
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-background text-stone-900 dark:text-stone-100">
+            {assetError ? <p role="alert" className="px-6 text-red-500">{assetError} <Button onClick={()=>void useAssetStore.getState().load().catch(()=>{})}>重新加载</Button></p> : null}
             <main className="min-h-0 flex-1 overflow-y-auto bg-background">
                 <div className="workspace-page">
                     <header className="workspace-heading workspace-heading-with-search">
@@ -468,9 +482,17 @@ export default function AssetsPage() {
     );
 }
 
+
+const grokIconButton = "grid size-8 shrink-0 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] hover:bg-[#F3F4F6] disabled:opacity-40 dark:bg-stone-800 dark:text-stone-200";
+
+function GrokIconAction({ label, disabled, pressed, iconOnly, className, onClick, children }: { label: string; disabled?: boolean; pressed?: boolean; iconOnly?: boolean; className?: string; onClick: () => void; children: ReactNode }) {
+    return <button type="button" className={`inline-flex h-8 items-center gap-1.5 rounded-full text-[13px] leading-5 text-[#374151] hover:bg-[#F3F4F6] disabled:opacity-40 dark:text-stone-200 dark:hover:bg-white/10 ${iconOnly ? "px-0" : "pr-2"} ${className || ""}`} disabled={disabled} aria-label={label} aria-pressed={pressed} title={label} onClick={onClick}><span className={grokIconButton}>{children}</span>{iconOnly ? null : label}</button>;
+}
+
 function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete, onToggleFavorite }: { asset: Asset; onOpen: () => void; onEdit: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onDelete: () => void; onToggleFavorite: () => void }) {
     const { t } = useTranslation();
-    const cover = asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "");
+    const fullCover = asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "");
+    const cover = fullCover ? mediaPreviewSrc(fullCover, 640) : "";
     const favorite = asset.metadata?.favorite === true;
     return (
         <Card
@@ -507,17 +529,11 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete, onTogg
                 </div>
             </button>
             <div className="mt-auto flex items-center gap-1 border-t border-border px-3 py-2">
-                <Button type="text" size="small" icon={<Eye className="size-3.5" />} onClick={onOpen}>
-                    {t("common.view")}
-                </Button>
-                <Tooltip title={t("common.edit")}><Button type="text" size="small" aria-label={t("common.edit")} icon={<PencilLine className="size-3.5" />} onClick={onEdit} /></Tooltip>
-                {asset.kind === "text" ? (
-                    <Tooltip title={t("common.copy")}><Button type="text" size="small" aria-label={t("common.copy")} icon={<Copy className="size-3.5" />} onClick={() => void onCopy(asset)} /></Tooltip>
-                ) : null}
-                {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" ? (
-                    <Tooltip title={t("common.download")}><Button type="text" size="small" aria-label={t("common.download")} icon={<Download className="size-3.5" />} onClick={() => onDownload(asset)} /></Tooltip>
-                ) : null}
-                <Tooltip title={t("common.delete")}><Button type="text" size="small" className="ml-auto" danger aria-label={t("common.delete")} icon={<Trash2 className="size-3.5" />} onClick={onDelete} /></Tooltip>
+                <GrokIconAction label={t("common.view")} onClick={onOpen}><Eye className="size-4" /></GrokIconAction>
+                <GrokIconAction label={t("common.edit")} iconOnly onClick={onEdit}><PencilLine className="size-4" /></GrokIconAction>
+                {asset.kind === "text" ? <GrokIconAction label={t("common.copy")} iconOnly onClick={() => void onCopy(asset)}><Copy className="size-4" /></GrokIconAction> : null}
+                {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" ? <GrokIconAction label={t("common.download")} iconOnly onClick={() => onDownload(asset)}><Download className="size-4" /></GrokIconAction> : null}
+                <GrokIconAction label={t("common.delete")} iconOnly className="ml-auto" onClick={onDelete}><Trash2 className="size-4" /></GrokIconAction>
             </div>
         </Card>
     );
@@ -530,6 +546,9 @@ function AssetDetailsModal({ asset, onClose, onCopy, onDownload, onToggleFavorit
     const dispatchImage = useWorkbenchAgentStore((state) => state.dispatchImage);
     const dispatchVideo = useWorkbenchAgentStore((state) => state.dispatchVideo);
     const cover = asset ? (asset.kind === "image" ? asset.data.dataUrl || asset.coverUrl : asset.coverUrl) : "";
+    const [coverReady, setCoverReady] = useState(false);
+    const [zoomOpen, setZoomOpen] = useState(false);
+    useEffect(() => { setCoverReady(false); setZoomOpen(false); }, [asset?.id, cover]);
     const prompt = typeof asset?.metadata?.prompt === "string" ? asset.metadata.prompt : "";
     const favorite = asset?.metadata?.favorite === true;
     const regenerate = () => {
@@ -557,6 +576,7 @@ function AssetDetailsModal({ asset, onClose, onCopy, onDownload, onToggleFavorit
         navigate("/image");
     };
     return (
+        <>
         <Modal
             title={<span className="sr-only">{t("assets.details")}</span>}
             open={Boolean(asset)} onCancel={onClose} maskClosable mask={{ enabled: true, closable: true }} footer={null} centered destroyOnHidden
@@ -580,7 +600,10 @@ function AssetDetailsModal({ asset, onClose, onCopy, onDownload, onToggleFavorit
                             ) : asset.kind === "text" ? (
                                 <div className="h-full w-full overflow-y-auto whitespace-pre-wrap break-words text-base leading-7 text-stone-200">{asset.data.content}</div>
                             ) : cover ? (
-                                <Image src={cover} alt={asset.title} preview={{ mask: null }} styles={{ root: { width: "100%", height: "100%" }, image: { width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" } }} />
+                                <div className="relative h-full w-full">
+                                    {!coverReady ? <div className="absolute inset-0 z-10 grid place-items-center text-sm text-white/80" role="status">加载中</div> : null}
+                                    <button type="button" className="h-full w-full" aria-label="查看大图" onClick={() => setZoomOpen(true)}><img src={cover} alt={asset.title} className="h-full w-full object-contain" onLoad={() => setCoverReady(true)} onError={() => setCoverReady(true)} /></button>
+                                </div>
                             ) : <span className="text-stone-400">{t("assets.noCover")}</span>}
                         </div>
                         <div className="flex min-h-0 min-w-0 flex-col border-l border-border bg-background p-3 text-[13px] font-normal leading-5 text-stone-600 dark:text-stone-300 lg:p-4">
@@ -592,7 +615,7 @@ function AssetDetailsModal({ asset, onClose, onCopy, onDownload, onToggleFavorit
                                     <section className="shrink-0">
                                         <div className="mb-2 flex items-center justify-between gap-3">
                                             <span className="text-stone-500 dark:text-stone-400">提示词</span>
-                                            <Button type="link" size="small" className="!text-[13px] !font-normal !leading-5" icon={<Copy className="size-3.5" />} onClick={() => copyText(prompt)}>复制</Button>
+                                            <GrokIconAction label="复制" onClick={() => copyText(prompt)}><Copy className="size-4" /></GrokIconAction>
                                         </div>
                                         <p className="thin-scrollbar m-0 max-h-56 overflow-y-auto rounded-xl border border-border p-3 whitespace-pre-wrap break-words">{prompt}</p>
                                     </section>
@@ -612,20 +635,22 @@ function AssetDetailsModal({ asset, onClose, onCopy, onDownload, onToggleFavorit
                             </div>
                         </div>
                     </div>
-                    <div className="mx-auto flex w-fit max-w-full flex-wrap items-center gap-3 rounded-2xl border border-border bg-background p-3 shadow-lg [&_.ant-btn]:!h-9 [&_.ant-btn]:!w-28 [&_.ant-btn]:!text-[12px] [&_.ant-btn]:!font-normal [&_.ant-btn]:!leading-5 [&_.ant-btn_svg]:!size-3.5">
+                    <div className="mx-auto flex w-fit max-w-full flex-wrap items-center gap-1 rounded-full bg-white px-2 py-1.5 shadow-[0_8px_30px_rgba(15,23,42,.08)] dark:bg-stone-900">
                         {asset.kind === "text" ? (
-                            <Button type="primary" size="middle" icon={<Copy className="size-3.5" />} onClick={() => onCopy(asset)}>{t("assets.copyText")}</Button>
+                            <GrokIconAction label={t("assets.copyText")} onClick={() => onCopy(asset)}><Copy className="size-4" /></GrokIconAction>
                         ) : (
-                            <Button type="primary" size="middle" icon={<Download className="size-3.5" />} onClick={() => onDownload(asset)}>{t("common.download")}</Button>
+                            <GrokIconAction label={t("common.download")} onClick={() => onDownload(asset)}><Download className="size-4" /></GrokIconAction>
                         )}
-                        <Button size="middle" icon={<Repeat2 className="size-3.5" />} disabled={asset.kind !== "image"} onClick={cite}>引用</Button>
-                        <Button size="middle" icon={<RefreshCw className="size-3.5" />} disabled={!prompt || (asset.kind !== "image" && asset.kind !== "video")} onClick={regenerate}>重新生成</Button>
-                        <Button size="middle" aria-pressed={favorite} icon={<Star className={`size-3.5 ${favorite ? "fill-current text-amber-500" : ""}`} />} onClick={onToggleFavorite}>{favorite ? "取消收藏" : "收藏"}</Button>
-                        <Button size="middle" className="hover:!border-red-500 hover:!text-red-500 focus-visible:!border-red-500 focus-visible:!text-red-500 active:!border-red-500 active:!text-red-500" icon={<Trash2 className="size-3.5" />} onClick={onDelete}>删除</Button>
+                        <GrokIconAction label="引用" disabled={asset.kind !== "image"} onClick={cite}><Repeat2 className="size-4" /></GrokIconAction>
+                        <GrokIconAction label="重新生成" disabled={!prompt || (asset.kind !== "image" && asset.kind !== "video")} onClick={regenerate}><RefreshCw className="size-4" /></GrokIconAction>
+                        <GrokIconAction label={favorite ? "取消收藏" : "收藏"} pressed={favorite} onClick={onToggleFavorite}><Star className={`size-4 ${favorite ? "fill-amber-400 text-amber-400" : ""}`} /></GrokIconAction>
+                        <GrokIconAction label="删除" onClick={onDelete}><Trash2 className="size-4" /></GrokIconAction>
                     </div>
                 </div>
             ) : null}
         </Modal>
+        {zoomOpen && asset?.kind === "image" ? <ImageLightbox variant="light" images={[{ id: asset.id, src: asset.data.dataUrl || cover, alt: asset.title, filename: asset.title || "image.png", asset: { key: typeof asset.metadata?.assetKey === "string" ? asset.metadata.assetKey : `asset:${asset.id}`, savedId: asset.id, title: asset.title, source: asset.source || "内容库", url: asset.data.dataUrl || cover, storageKey: asset.data.storageKey, width: asset.data.width, height: asset.data.height, bytes: asset.data.bytes, mimeType: asset.data.mimeType, metadata: asset.metadata } }]} index={0} onIndex={() => {}} onClose={() => setZoomOpen(false)} /> : null}
+        </>
     );
 }
 

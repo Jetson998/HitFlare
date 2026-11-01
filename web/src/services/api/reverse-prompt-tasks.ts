@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { decodeChannelModel, modelOptionLabel, resolveModelRequestConfig, resolveModelScript, selectableModelsByCapability, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, modelOptionLabel, resolveModelSelection, resolveModelScript, selectableModelsByCapability, type AiConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { visualAnalysisSchema, visualPromptSchema, type VisualImageSource } from "@/services/visual-analysis/contract";
 
@@ -57,8 +57,10 @@ export function reversePromptRequestConfig(config: AiConfig, model: string) {
     const selectable = config.channels.length ? selectableModelsByCapability(config, "text") : [config.model, config.textModel];
     if (!selectable.includes(model)) throw new ReversePromptApiError("请选择当前配置中的文本模型，并确认它支持图片输入", 400);
     if (resolveModelScript(config, model)) throw new ReversePromptApiError("服务器反推暂不执行自定义调用脚本，请使用内置调用格式的文本模型", 400);
-    const resolved = resolveModelRequestConfig(config, model);
-    return { baseUrl: resolved.baseUrl, apiKey: resolved.apiKey, apiFormat: resolved.apiFormat, model: resolved.model, modelValue: model, modelLabel: modelOptionLabel(config, model), channelId: decodeChannelModel(model)?.channelId, systemPrompt: resolved.systemPrompt, reasoningEffort: resolved.reasoningEffort };
+    const resolved = resolveModelSelection(config, model);
+    const channelId=decodeChannelModel(model)?.channelId;
+    if(!channelId) throw new ReversePromptApiError("请选择已保存的模型渠道",400);
+    return {channelId,model:resolved.model};
 }
 
 async function request(userId: string, path: string, init: RequestInit = {}): Promise<unknown> {

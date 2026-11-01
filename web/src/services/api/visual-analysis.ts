@@ -79,12 +79,11 @@ async function resolveVisualModel(config: AiConfig, model: string) {
     }
     // Keep the encoded channel/model selection for the shared client's resolver.
     const requestConfig = { ...structuredClone(config), model: value };
-    const resolved = resolveModelRequestConfig(requestConfig, value);
+    const resolved = await resolveModelRequestConfig(requestConfig, value);
     if (!resolved.baseUrl.trim() || !resolved.apiKey.trim()) throw new VisualAnalysisError("INVALID_MODEL", "所选渠道缺少接口地址或 API Key", { stage: "observing" });
     const settings = JSON.stringify({
         model: value,
         baseUrl: resolved.baseUrl,
-        apiKey: resolved.apiKey,
         apiFormat: resolved.apiFormat,
         systemPrompt: resolved.systemPrompt,
         reasoningEffort: resolved.reasoningEffort,

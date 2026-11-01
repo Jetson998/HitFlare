@@ -11,7 +11,7 @@ import { ModelSelectModal } from "./model-select-modal";
 
 type ScriptTarget = { name: string; capability: ModelCapability; value: string };
 
-export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
+export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => Promise<void>; onClose: () => void }) {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const isAdmin = useIsAdmin();
@@ -30,7 +30,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         if (open && channel) {
             setDraft(channel);
             autoFetchSignatureRef.current = "";
-        }
+        } else if(!open) setDraft(null);
     }, [open, channel]);
 
     if (!draft) return null;
@@ -85,9 +85,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         }
     };
 
-    const save = () => {
-        onSave({ ...draft, name: draft.name.trim() || t("config.channels.unnamed"), models: normalizeChannelModels(draft.models) });
-        onClose();
+    const save=async()=>{
+        try {await onSave({...draft,name:draft.name.trim() || t("config.channels.unnamed"),models:normalizeChannelModels(draft.models)});onClose();setDraft(null);}
+        catch(error) {message.error(error instanceof Error ? error.message : "渠道保存失败");}
     };
 
     return (
@@ -121,8 +121,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 </label>
                 <label className="block md:col-span-2">
                     <span className="mb-1 block text-[13px] leading-5 font-medium">API Key</span>
-                    <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} onBlur={() => void autoFetchModels()} placeholder="sk-..." />
+                    <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value,clearApiKey:false })} onBlur={() => void autoFetchModels()} placeholder={draft.hasApiKey ? "已加密保存，留空保持原 Key" : "sk-..."} />
                 </label>
+                {draft.hasApiKey ? <Button danger type="text" onClick={()=>patch({apiKey:"",clearApiKey:true,hasApiKey:false})}>清除已保存 Key</Button> : null}
             </div>
 
             <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">

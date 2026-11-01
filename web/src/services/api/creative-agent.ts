@@ -1,15 +1,19 @@
+import {checkMediaSize} from "./workspace";
+
 export type CreativeReference = { id: string; title: string; mime?: string };
-export type CreativeAgentConfig = { baseUrl: string; apiKey: string; apiFormat: "openai"; model: string };
-export type CreativePlan = { type: "creative_plan"; goal: string; prompt: string; references: CreativeReference[]; mode?: "create" | "optimize_prompt"; originalPrompt?: string };
+export type CreativeAgentConfig = {channelId:string;model:string};
+export type CreativePlan = { type: "creative_plan"; goal: string; prompt: string; note?: string; references: CreativeReference[]; mode?: "create" | "optimize_prompt"; originalPrompt?: string };
+export type CreativeImageTask = { taskId: string; planVersion: number };
 export type CreativeMessage = {
     threadId: string; turnId: string; itemId: string; role: "user" | "assistant";
     content: CreativePlan | { type: "message"; message: string } | null;
     original?: CreativePlan; references: CreativeReference[]; version: number; createdAt: string;
+    imageTask?: CreativeImageTask;
 };
 export type CreativeRun = { turnId: string; itemId: string; retryOf?: string; status: "running" | "succeeded" | "failed" | "cancelled" | "interrupted"; error?: string };
 export type CreativeDraft = { message: string; referenceIds: string[]; version: number };
 export type CreativeThread = { id: string; userId: string; title: string; revision: number; updatedAt: string; messages: CreativeMessage[]; runs: CreativeRun[]; draft: CreativeDraft };
-export type CreativeSummary = Pick<CreativeThread, "id" | "title" | "revision" | "updatedAt"> & { preview: string; running: boolean };
+export type CreativeSummary = Pick<CreativeThread, "id" | "title" | "revision" | "updatedAt"> & { preview: string; running: boolean; spoken?: boolean };
 export type CreativeSnapshot = { protocolVersion: number; thread: CreativeThread; assets: CreativeReference[] };
 export type CreativeHandoff = { userId: string; threadId: string; itemId: string; version: number; prompt: string; references: CreativeReference[] };
 
@@ -26,13 +30,14 @@ export async function creativeRequest<T>(owner: string, path: string, method = "
     if (!response.ok) throw new CreativeApiError(data.error || "创作 Agent 请求失败", response.status);
     return data as T;
 }
-export const creativeAssetUrl = (owner: string, threadId: string, id: string) => `/api/agent/threads/${encodeURIComponent(threadId)}/assets/${encodeURIComponent(id)}?owner=${encodeURIComponent(owner)}`;
+export const creativeAssetUrl = (owner: string, threadId: string, id: string, edge?: 96 | 640) => `/api/agent/threads/${encodeURIComponent(threadId)}/assets/${encodeURIComponent(id)}?owner=${encodeURIComponent(owner)}${edge ? `&edge=${edge}` : ""}`;
 
 export async function uploadCreativeAsset(owner: string, threadId: string, file: File) {
+    checkMediaSize(file,"image");
     const body = new FormData(); body.append("file", file);
     const response = await fetch(`/api/agent/threads/${encodeURIComponent(threadId)}/assets`, { method: "POST", credentials: "same-origin", headers: { "x-hitflare-user": owner }, body });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new CreativeApiError(data.error || "参考图上传失败", response.status);
+    if (!response.ok) throw new CreativeApiError(response.status===413 ? "图片超过 25 MiB 上传限制，请保留原文件并调整后重试" : data.error || "参考图上传失败", response.status);
     return data.asset as CreativeReference;
 }
 

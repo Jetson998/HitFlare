@@ -1,8 +1,9 @@
 # HitFlare 后端需求清单：权限依赖与用户数据服务端化
 
 状态：后端实现需求稿  
-更新时间：2026-09-14  
 实施边界：本文件只列后端需要实现的能力、数据边界和接口合同；权限体系由前端侧负责呈现和入口控制，但后端必须提供权威鉴权和数据隔离。
+
+后续由总开发统一推进，阶段顺序与已确认的产品边界见 [分阶段开发与本地化测试计划](./SERVICEIZATION_PHASED_DEVELOPMENT_LOCAL_TEST_PLAN.md)。上游错误码和任务/调用/输出关系已纳入合同，按 P2/P3 开发；P1 身份、默认租户、session 生命周期、账号审计和三库迁移保护已完成本地开发/自测，待人工验收，见 [P1 验收包](./SERVICEIZATION_P1_ACCEPTANCE.md)。其余接口和数据表仍为后续需求，不能计作已实现。
 
 后端完成服务化后的验收测试用例见：[`SERVICE_AND_PERMISSION_ACCEPTANCE_TEST_CASES.md`](SERVICE_AND_PERMISSION_ACCEPTANCE_TEST_CASES.md)。
 
@@ -169,13 +170,15 @@ DELETE /api/me/assets/:assetId
 
 生成历史用于用户自己回看、复用、下载、保存到资产、继续编辑。它不是平台账单。
 
+一个生成任务必须可关联多次模型调用，每次调用再关联实际输出。任务数、调用次数和图片数量分别统计；多图分次请求、一次 `n` 请求返回多图、部分失败和手动重试均按真实调用记录。具体合同见 [任务、调用与错误字段](./SERVICEIZATION_PHASED_DEVELOPMENT_LOCAL_TEST_PLAN.md#311-上游错误码与任务模型调用输出关联已确认)。
+
 ### 4.2 建议数据表
 
 #### `generation_requests`
 
 | 字段 | 说明 |
 | --- | --- |
-| `id` | 生成请求 UUID |
+| `id` | 生成任务 UUID；工作台业务以此作为 `taskId` |
 | `tenant_id` | 租户 UUID |
 | `owner_user_id` | 发起用户 UUID |
 | `client_request_id` | 前端生成的幂等键 |
@@ -186,15 +189,42 @@ DELETE /api/me/assets/:assetId
 | `model` | 模型名 |
 | `request_params_json` | 用户侧可回放的生成参数，不包含 API Key |
 | `prompt_text` | 完整提示词，只能用户本人读取 |
-| `prompt_hash` | 提示词哈希，供管理员元数据查询 |
+| `prompt_hash` | 如内部确需保留则另定用途；默认不向管理员日志 DTO 提供，不作为日志必要字段 |
 | `prompt_length` | 提示词长度 |
-| `error_code` | 错误码，可为空 |
+| `error_code` | HitFlare 任务级错误码，可为空；不能代替各模型调用的上游错误码 |
 | `error_message` | 脱敏错误信息，可为空 |
 | `started_at` | 开始时间 |
 | `finished_at` | 结束时间 |
 | `created_at` | 创建时间 |
 | `updated_at` | 更新时间 |
 | `deleted_at` | 用户删除时间 |
+
+#### `model_calls`
+
+独立记录实际模型请求，复用同一日志合同覆盖图片/视频/文本/音频、Agent 和反推；不把各业务完整快照复制进此表。归属由 session 或服务端已鉴权任务派生，不能由客户端指定。`task_type + task_id` 关联原业务；工作台 `task_id` 对应 `generation_requests.id`，Agent/反推仍使用各自已有 ID。
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` | 独立调用 UUID，对外为 `callId`；每次真实模型请求一条 |
+| `tenant_id`、`owner_user_id` | 继承业务任务归属 |
+| `task_type`、`task_id`、`request_id` | 业务类型、业务任务 ID、HitFlare 操作/接口请求 ID；与供应商 ID 分开 |
+| `stage`、`slot_index`、`attempt_no`、`retry_of_call_id` | 调用阶段、图片槽位、尝试序号、关联上次失败调用；可空字段不补造 |
+| `channel_id`、`base_url_host`、`model` | 此次实际调用自己的渠道与模型 |
+| `execution_mode`、`report_source` | 浏览器/服务端执行，`client_reported` / `server_observed`；来源由后端决定 |
+| `status`、`dispatched_at`、`finished_at`、`duration_ms` | 调用状态和耗时；未发送不计作已执行，发送确认或结果丢失保留未知状态 |
+| `app_http_status`、`app_error_code`、`error_origin`、`failure_stage` | 应用响应/错误及发生环节，不覆盖上游码值 |
+| `upstream_http_status` | 实际收到的上游 HTTP 状态，如 400/403/429/5xx；没收到响应为 null |
+| `upstream_error_code`、`upstream_error_type` | 供应商返回的安全原始 code/type，保留原码值；未返回为 null |
+| `upstream_finish_reason` | 供应商完成/拒绝原因，按安全白名单保存；用于 HTTP 200 但流内失败等情况 |
+| `upstream_request_id`、`provider_task_id` | 供应商请求 ID 与异步任务 ID，按已知安全字段提取 |
+| `error_message_safe` | 脱敏信息，不保存原始错误正文/headers |
+| `produced_output_count`、`usage_json`、`usage_source` | 实际输出数、白名单 usage 字段和来源；usage 未返回不是 0 |
+| `reported_cost`、`currency`、`cost_source` | 供应商实际返回费用及来源；未返回为 null，不增加结算引擎 |
+| `created_at`、`updated_at` | 日志生命周期 |
+
+上游 HTTP 状态与供应商错误 code/type 分别记录，不能仅保留“请求失败”或中文提示。200 流内错误保留 HTTP 200 和流内错误码/原因；非 JSON 错误保留状态并提供安全概括；CORS/网络异常无可读响应时不虚构上游状态。轮询、下载、上传和保存错误作为操作日志关联原 callId，不增加生成调用数。来源不明的代理响应不能断言来自最终模型。
+
+任务内同槽位手动重试新增 callId 并保留旧错误；已有反推重试新建任务的行为继续沿用，关联 retryOfTaskId。日志重报、幂等重放不增加调用或消费。一次调用返回多张图时，usage/费用只按 callId 汇总一次，不当作每张图都产生完整用量。
 
 #### `generation_outputs`
 
@@ -204,6 +234,8 @@ DELETE /api/me/assets/:assetId
 | `tenant_id` | 租户 UUID |
 | `owner_user_id` | 用户 UUID |
 | `generation_id` | 关联 `generation_requests.id` |
+| `call_id` | 关联生产该输出的 `model_calls.id`，必须与生成任务、租户、用户一致 |
+| `output_index` | 此次调用内输出序号；一次调用多图时用不同序号绑定 |
 | `kind` | image / video / audio / text |
 | `object_id` | 媒体对象 ID；文本输出可为空 |
 | `text_content` | 文本输出内容；媒体输出为空 |
@@ -223,7 +255,12 @@ UNIQUE(tenant_id, owner_user_id, client_request_id)
 (tenant_id, owner_user_id, created_at DESC)
 (tenant_id, owner_user_id, status, created_at DESC)
 (generation_id)
+UNIQUE(call_id, output_index)
+(tenant_id, owner_user_id, task_type, task_id, created_at)
+(tenant_id, upstream_http_status, created_at DESC)
 ```
+
+管理员常用的渠道/模型、上游 code/type、供应商 request ID 查询索引在 S0 按实际查询合同冻结。callId 本身唯一；同一调用重复报告采用受限幂等更新，不追加一条新调用。
 
 ### 4.3 生成历史接口需求
 
@@ -233,12 +270,15 @@ PATCH  /api/me/generations/:generationId
 GET    /api/me/generations
 GET    /api/me/generations/:generationId
 DELETE /api/me/generations/:generationId
+POST   /api/me/generations/:generationId/calls
+PATCH  /api/me/generations/:generationId/calls/:callId
+GET    /api/me/generations/:generationId/calls
 POST   /api/me/generations/:generationId/outputs
 ```
 
 #### `POST /api/me/generations`
 
-前端在发起模型请求前创建生成记录。由于当前模式是浏览器直连用户自己的 Base URL，后端只记录 HitFlare 内的操作台账和用户历史，不代理模型请求。
+前端在发起模型请求前创建生成记录。图片/视频首轮继续浏览器直连用户自己的 Base URL，后端记录操作台账和用户历史；Agent/反推已由服务端执行，保留其业务接口，按同一调用日志合同记录 server_observed 数据。
 
 请求体建议：
 
@@ -256,7 +296,7 @@ POST   /api/me/generations/:generationId/outputs
 后端行为：
 
 - 校验 `channelId` 属于当前用户；
-- 写入 `prompt_text`、`prompt_hash`、`prompt_length`；
+- 写入本人历史的 `prompt_text`、`prompt_length`，不复制进管理员日志；
 - 状态初始为 `running` 或 `pending`；
 - 同一 `clientRequestId` 重复提交时返回已有记录，不重复创建。
 
@@ -275,6 +315,12 @@ POST   /api/me/generations/:generationId/outputs
 
 不允许更新归属字段。
 
+#### 调用记录接口
+
+`POST /api/me/generations/:generationId/calls` 在浏览器实际发请求的适配器处登记 callId、阶段/槽位、模型；同 callId 重报返回已有记录，同 ID 不同输入拒绝。PATCH 记录结果及第 4.2 节的结构化错误/usage，GET 返回本人调用明细。三个接口均验证 generation、call、channel 的当前用户归属和一致性。
+
+浏览器只能上报自己直连的调用，后端固定 `reportSource=client_reported`；不能更新 Agent/反推的服务器调用或伪造 server_observed。服务器调用由内部执行流程写入，不开放客户端覆盖。日志中的 requestId 与 callId 分开，重复上报仅更新同一调用；确认发送/结果丢失时保留不确定记录，不通过日志恢复自动重发模型。取消、手动重试、批量汇总和终态更新规则在 S0 冻结，旧失败调用不能被后续成功覆盖。
+
 #### `POST /api/me/generations/:generationId/outputs`
 
 用于把生成结果绑定到历史记录。媒体结果应先上传到媒体对象接口，再写入 `objectId`。
@@ -283,6 +329,8 @@ POST   /api/me/generations/:generationId/outputs
 
 ```json
 {
+  "callId": "...",
+  "outputIndex": 0,
   "kind": "image",
   "objectId": "...",
   "textContent": "",
@@ -298,12 +346,14 @@ POST   /api/me/generations/:generationId/outputs
 后端必须校验：
 
 - `generationId` 属于当前用户；
+- `callId` 属于同一用户且关联同一生成任务；
 - `objectId` 属于当前用户；
-- 输出的 `tenant_id`、`owner_user_id` 与生成记录一致。
+- 输出的 `tenant_id`、`owner_user_id` 与生成记录一致；
+- 同一 `callId + outputIndex` 重复绑定同一对象幂等，不重复输出；不同对象冲突不得静默覆盖。
 
 ### 4.4 管理员请求日志视图
 
-后端可以从 `generation_requests` 或独立 `request_logs` 提供管理员元数据接口：
+后端由 `model_calls`、任务摘要及操作日志的白名单投影提供管理员接口，不直接序列化 generation/Agent/反推全文：
 
 ```text
 GET /api/admin/request-logs
@@ -313,24 +363,29 @@ GET /api/admin/request-logs
 
 - 用户邮箱或显示名称；
 - 业务类型；
+- taskId、callId、阶段、槽位、尝试/重试关联及 HitFlare requestId；
 - 模型名；
 - Base URL host；
 - 状态；
 - 耗时；
-- 输出数量；
-- 错误码；
-- 提示词长度和哈希。
+- 实际输出数量、保存数量及输出 ID，不含输出内容；
+- 应用 HTTP 状态与错误码、上游 HTTP 状态、供应商 code/type、供应商 request ID、失败环节和脱敏信息；
+- 提示词长度；
+- 调用来源、实际返回的 usage/费用与币种来源，缺失显示“未返回”。
+
+可按任务、调用、用户、渠道、模型、时间、状态、上游 HTTP 状态、code/type、供应商 request ID 查询，并由任务展开多次调用。任务数、实际调用数、输出数分别展示；汇总 usage/费用以 callId 去重，不把图片数量当调用次数。
 
 管理员不可看：
 
 - 完整提示词；
+- 提示词片段、哈希或未定义的“必要摘要”；
 - 完整输出内容；
 - 图片、视频、音频；
 - API Key；
 - Authorization Header；
 - 完整供应商请求体和响应体。
 
-后台文案应叫“请求日志”或“调用记录”，不叫“账单”。
+后台文案应叫“请求日志”“调用记录”或“调用/用量”，不叫“账单”。用户删除历史后不级联抹掉仍在保留期内的安全调用/审计元数据；全文/媒体删除和日志保留分开，保留周期在阶段前确认。
 
 ## 5. 媒体对象服务端化需求
 
@@ -655,7 +710,10 @@ POST /api/me/import-legacy-data
 - [ ] 成功生成、失败生成、取消生成都有记录。
 - [ ] 重复 `clientRequestId` 不会重复创建历史。
 - [ ] 用户能查看自己的完整提示词和输出。
-- [ ] 管理员只能看到提示词长度、哈希和摘要级元数据。
+- [ ] 管理员只能看到白名单调用元数据和提示词长度，不含提示词全文、片段、哈希或摘要。
+- [ ] 一任务多次调用、一次调用多输出、手动重试的 taskId/callId/outputId 关系可追溯，任务数、调用数和输出数分开统计。
+- [ ] 上游 400/403 等 HTTP 状态、安全原始 code/type 和 request ID 保留；应用错误不覆盖，无响应不补造状态码。
+- [ ] usage/费用按 callId 去重，重复报告、轮询和结果保存不增加生成调用或消费。
 - [ ] 日志里没有 API Key、Authorization Header、完整供应商请求体。
 
 ### 8.5 画布
@@ -761,6 +819,8 @@ GET          /api/me/channels/:channelId/runtime-secret
 
 在浏览器直连模型的模式下，后端需要提供平台内请求日志，不要定义为真实账单。
 
+模型调用复用第 4 节 `model_calls` 与调用接口，不再额外创建第二份生成任务或调用计数；Agent/反推使用内部记录入口。下列 start/PATCH 用于渠道测试、模型列表等操作元数据，不能作为重复消费日志；管理视图聚合时区分操作请求和实际模型调用。
+
 接口建议：
 
 ```text
@@ -772,11 +832,12 @@ GET   /api/admin/request-logs
 
 后端记录：
 
-- 用户、租户、请求 ID；
+- 用户、租户、HitFlare requestId，按操作需要关联 taskId/callId；
 - 类型：image / video / text / audio；
 - 渠道 ID、Base URL host、模型名；
-- 状态、错误码、耗时、输出数量、媒体大小；
-- 提示词长度、提示词哈希、必要摘要。
+- 状态、耗时、输出数量、媒体大小及执行/报告来源；
+- 应用错误与上游 HTTP 状态、供应商 code/type/request ID、失败环节和脱敏信息分别记录，保留 400/403 等原始码值；
+- 提示词长度及供应商真实返回的 usage/费用来源；不记录提示词 hash、片段或泛化“必要摘要”。
 
 后端不能记录：
 

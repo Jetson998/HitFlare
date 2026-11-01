@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { App, Button, Image, Modal, Popover } from "antd";
+import { App, Button, Modal, Popover } from "antd";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { Brain, CheckCircle2, ChevronDown, ChevronRight, Circle, CircleAlert, Copy, ExternalLink, FilePenLine, FileText, FolderOpen, ListChecks, LoaderCircle, Search, ShieldAlert, TerminalSquare, Wrench, XCircle } from "lucide-react";
 import { Streamdown, type LinkSafetyModalProps } from "streamdown";
 import { useTranslation } from "react-i18next";
@@ -494,11 +495,12 @@ function AgentDetailBlock({ detail, theme }: { detail: UserDetail; theme: (typeo
 
 function AgentMessageAttachments({ attachments, alignRight }: { attachments: AgentChatAttachment[]; alignRight?: boolean }) {
     const { t } = useTranslation();
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+    const images = attachments.map(item => ({ id: item.id, src: item.url, alt: item.name, filename: item.name || "image.png" }));
     return (
         <>
             <div className={`mt-1.5 flex flex-wrap gap-1.5 ${alignRight ? "justify-end" : "justify-start"}`}>
-                {attachments.map((item) => (
+                {attachments.map((item, index) => (
                     <img
                         key={item.id}
                         src={item.url}
@@ -506,15 +508,11 @@ function AgentMessageAttachments({ attachments, alignRight }: { attachments: Age
                         title={t("agent.message.viewLarge")}
                         className="size-10 cursor-zoom-in rounded-lg object-cover"
                         draggable={false}
-                        onClick={() => setPreviewUrl(item.url)}
+                        onClick={() => setPreviewIndex(index)}
                     />
                 ))}
             </div>
-            {previewUrl ? (
-                <div className="hidden">
-                    <Image src={previewUrl} alt={t("agent.message.attachmentPreview")} preview={{ visible: true, src: previewUrl, onVisibleChange: (visible) => !visible && setPreviewUrl(null) }} />
-                </div>
-            ) : null}
+            {previewIndex !== null ? <ImageLightbox images={images} index={previewIndex} onIndex={setPreviewIndex} onClose={() => setPreviewIndex(null)} /> : null}
         </>
     );
 }

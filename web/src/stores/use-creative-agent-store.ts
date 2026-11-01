@@ -1,15 +1,16 @@
 import { create } from "zustand";
 import { CreativeApiError, creativeRequest, type CreativeAgentConfig, type CreativeDraft, type CreativePlan, type CreativeReference, type CreativeSnapshot, type CreativeSummary } from "@/services/api/creative-agent";
 import { useUserStore } from "./use-user-store";
-import { modelCapabilityOf, resolveModelRequestConfig, useConfigStore } from "./use-config-store";
+import { modelCapabilityOf, resolveModelSelection, decodeChannelModel, useConfigStore } from "./use-config-store";
 
 type Draft = CreativeDraft & { dirty?: boolean; error?: string };
 type PlanEdit = { plan: CreativePlan; version: number };
+export type ImageRun = { threadId: string; itemId: string; taskId: string };
 type State = {
     owner: string; panelOpen: boolean; view: "chat" | "history"; activeId: string;
     threads: CreativeSummary[]; snapshots: Record<string, CreativeSnapshot>; drafts: Record<string, Draft>;
     edits: Record<string, PlanEdit>; assets: Record<string, CreativeReference>; sending: Record<string, boolean>; retrying: Record<string, boolean>;
-    ready: boolean; error: string;
+    imageRun: ImageRun | null; ready: boolean; error: string; openingId: string;
     open: () => void; close: () => void; toggle: () => void;
     watch: (owner: string) => () => void;
     reconnect: () => void;
@@ -18,6 +19,7 @@ type State = {
     accept: (snapshot: CreativeSnapshot) => void; updateDraft: (id: string, patch: Partial<Draft>) => void;
     saveDraft: (id: string) => Promise<void>; send: (id: string) => Promise<void>; retry: (id: string, turnId: string) => Promise<void>;
     mutate: (id: string, suffix: string, method: string, body: unknown) => Promise<void>;
+    setImageRun: (run: ImageRun | null) => void;
 };
 
 let stopWatching: (() => void) | null = null;
@@ -27,15 +29,17 @@ const saves = new Map<string, Promise<void>>();
 const pendingSend = new Map<string, { requestId: string; draftVersion: number; message: string; referenceIds: string[]; agent: CreativeAgentConfig }>();
 const pendingRetry = new Map<string, { requestId: string; agent: CreativeAgentConfig }>();
 const rejected = (error: unknown) => error instanceof CreativeApiError && (error.status < 500 || error.status === 503);
-const initial = { owner: "", panelOpen: false, view: "chat" as const, activeId: "", threads: [], snapshots: {}, drafts: {}, edits: {}, assets: {}, sending: {}, retrying: {}, ready: false, error: "" };
+const initial = { owner: "", panelOpen: false, view: "chat" as const, activeId: "", threads: [], snapshots: {}, drafts: {}, edits: {}, assets: {}, sending: {}, retrying: {}, imageRun: null, ready: false, error: "", openingId: "" };
 const sameDraft = (left: Draft | undefined, right: CreativeDraft) => Boolean(left && left.message === right.message && JSON.stringify(left.referenceIds) === JSON.stringify(right.referenceIds));
 
 function currentAgentConfig(): CreativeAgentConfig {
     const config = useConfigStore.getState().config;
     const selected = config.textModel;
-    const requestConfig = resolveModelRequestConfig(config, selected);
-    if (modelCapabilityOf(config, selected) !== "text" || requestConfig.apiFormat !== "openai" || !requestConfig.baseUrl.trim() || !requestConfig.apiKey.trim() || !requestConfig.model.trim()) throw new Error("请先在配置与用户偏好中配置可用的 OpenAI 文本模型渠道");
-    return { baseUrl: requestConfig.baseUrl, apiKey: requestConfig.apiKey, apiFormat: "openai", model: requestConfig.model };
+    const requestConfig = resolveModelSelection(config, selected);
+    if (modelCapabilityOf(config, selected) !== "text" || requestConfig.apiFormat !== "openai" || !requestConfig.baseUrl.trim() || !useConfigStore.getState().isAiConfigReady(config,selected) || !requestConfig.model.trim()) throw new Error("请先在配置与用户偏好中配置可用的 OpenAI 文本模型渠道");
+    const channelId=decodeChannelModel(selected)?.channelId;
+    if(!channelId) throw new Error("请选择已保存的模型渠道");
+    return {channelId,model:requestConfig.model};
 }
 
 export const useCreativeAgentStore = create<State>((set, get) => ({
@@ -110,7 +114,9 @@ export const useCreativeAgentStore = create<State>((set, get) => ({
         if (!get().activeId) {
             const id = list.threads.find(thread => thread.id === list.selectedThreadId)?.id || list.threads[0]?.id;
             if (id) { set({ activeId: id }); await get().load(id); }
-        }
+        } else if (!get().snapshots[get().activeId]) await get().load(get().activeId);
+        const newest = list.threads[0]?.id;
+        if (newest && !get().snapshots[newest]) void get().load(newest);
     },
     accept: snapshot => {
         if (snapshot.thread.userId !== get().owner || snapshot.protocolVersion !== 1) return;
@@ -127,12 +133,27 @@ export const useCreativeAgentStore = create<State>((set, get) => ({
         const snapshot = await creativeRequest<CreativeSnapshot>(owner, `threads/${id}`);
         if (get().owner === owner && currentEpoch === epoch) get().accept(snapshot);
     },
-    select: async id => { set({ activeId: id, view: "chat", error: "" }); await Promise.all([get().load(id), creativeRequest(get().owner, "selection", "PUT", { threadId: id })]); },
+    select: async id => {
+        const known = Boolean(get().snapshots[id]);
+        set({ activeId: id, view: "chat", error: "", openingId: known ? "" : id });
+        try { await Promise.all([get().load(id), creativeRequest(get().owner, "selection", "PUT", { threadId: id })]); }
+        finally { if (get().openingId === id) set({ openingId: "" }); }
+    },
     newThread: async () => {
         const owner = get().owner; const currentEpoch = epoch;
+        const current = get().snapshots[get().activeId]?.thread;
+        if (current && !current.messages.some(message => message.role === "user" && message.content) && !current.runs.some(run => run.status === "running")) {
+            set({ view: "chat", error: "" });
+            return current.id;
+        }
         const snapshot = await creativeRequest<CreativeSnapshot>(owner, "threads", "POST");
         if (get().owner !== owner || currentEpoch !== epoch) throw new Error("账号已切换");
-        get().accept(snapshot); set({ activeId: snapshot.thread.id, view: "chat", error: "" }); await creativeRequest(owner, "selection", "PUT", { threadId: snapshot.thread.id }); await get().refresh(); return snapshot.thread.id;
+        get().accept(snapshot);
+        const created = snapshot.thread;
+        set(state => ({ activeId: created.id, view: "chat", error: "", threads: [{ id: created.id, title: created.title, revision: created.revision, updatedAt: created.updatedAt, preview: "", running: false }, ...state.threads.filter(item => item.id !== created.id)] }));
+        await creativeRequest(owner, "selection", "PUT", { threadId: created.id });
+        await get().refresh();
+        return created.id;
     },
     updateDraft: (id, patch) => {
         set(state => ({ drafts: { ...state.drafts, [id]: { ...state.drafts[id], ...patch, dirty: true } } }));
@@ -191,6 +212,7 @@ export const useCreativeAgentStore = create<State>((set, get) => ({
         const snapshot = await creativeRequest<CreativeSnapshot>(owner, `threads/${id}${suffix}`, method, body);
         if (get().owner === owner && currentEpoch === epoch) get().accept(snapshot);
     },
+    setImageRun: imageRun => set({ imageRun }),
 }));
 
 const stopUserSubscription = useUserStore.subscribe((state, previous) => {

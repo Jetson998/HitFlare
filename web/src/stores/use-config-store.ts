@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { workspaceRequest, workspaceJson, fetchRuntimeSecret } from "@/services/api/workspace";
+import { useUserStore } from "./use-user-store";
 import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
@@ -21,6 +22,9 @@ export type ModelChannel = {
     name: string;
     baseUrl: string;
     apiKey: string;
+    hasApiKey?: boolean;
+    apiKeyMask?: string;
+    clearApiKey?: boolean;
     apiFormat: ApiCallFormat;
     models: ChannelModel[];
 };
@@ -119,6 +123,11 @@ export const defaultWebdavSyncConfig: WebdavSyncConfig = {
 };
 
 type ConfigStore = {
+    loaded: boolean;
+    error: string;
+    load: () => Promise<void>;
+    flush: () => Promise<void>;
+    saveConfig: (config: AiConfig) => Promise<void>;
     config: AiConfig;
     webdav: WebdavSyncConfig;
     isConfigOpen: boolean;
@@ -188,90 +197,100 @@ export function resolveModelScript(config: AiConfig, value: string) {
     return findChannelModel(config, value)?.model.script?.trim() || "";
 }
 
-function isAiConfigReady(config: AiConfig, model: string) {
-    const channel = resolveModelChannel(config, model);
-    return Boolean(model.trim() && channel.baseUrl.trim() && channel.apiKey.trim());
+/** OpenAI-compatible image calls run on the server. Gemini and custom scripts stay in the browser. */
+export function imageRunsOnServer(config: AiConfig, value = config.model || config.imageModel) {
+    if (!value || resolveModelScript(config, value)) return false;
+    const found = findChannelModel(config, value);
+    return Boolean(found && found.channel.apiFormat !== "gemini");
 }
 
-export const useConfigStore = create<ConfigStore>()(
-    persist(
-        (set, get) => ({
-            config: defaultConfig,
-            webdav: defaultWebdavSyncConfig,
-            isConfigOpen: false,
-            configTab: "channels",
-            shouldPromptContinue: false,
-            updateConfig: (key, value) => {
-                if ((key === "proxyEnabled" || key === "proxyUrl") && get().config[key] !== value) requireAdminAction();
-                set((state) => ({
-                    config: {
-                        ...state.config,
-                        [key]: value,
-                    },
-                }));
-            },
-            importChannelCredentials: (input) => {
-                const currentConfig = get().config;
-                const result = upsertChannelCredentials(currentConfig, input);
-                if (result.config !== currentConfig) set({ config: result.config });
-                return { status: result.status, channelName: result.channelName };
-            },
-            updateWebdavConfig: (key, value) => {
-                requireAdminAction();
-                set((state) => ({
-                    webdav: {
-                        ...state.webdav,
-                        [key]: value,
-                    },
-                }));
-            },
-            isAiConfigReady: (config, model) => isAiConfigReady(config, model),
-            openConfigDialog: (shouldPromptContinue = false, configTab = "channels") => set({ isConfigOpen: true, shouldPromptContinue, configTab }),
-            setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
-            clearPromptContinue: () => set({ shouldPromptContinue: false }),
-        }),
-        {
-            name: CONFIG_STORE_KEY,
-            partialize: (state) => ({ config: state.config, webdav: state.webdav }),
-            merge: (persisted, current) => {
-                const persistedState = (persisted || {}) as Partial<ConfigStore>;
-                const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
-                const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
-                const config = { ...defaultConfig, ...removeLegacyDefaultChannel(persistedConfig) };
-                const channels = normalizeChannels(config);
-                const models = modelOptionsFromChannels(channels);
-                return {
-                    ...current,
-                    webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
-                    config: {
-                        ...config,
-                        channelMode: "local",
-                        apiFormat: normalizeApiFormat(config.apiFormat),
-                        channels,
-                        models,
-                        imageModel: normalizeModelOptionValue(config.imageModel || config.model || defaultConfig.imageModel, channels),
-                        videoModel: normalizeModelOptionValue(config.videoModel, channels),
-                        textModel: normalizeModelOptionValue(config.textModel || config.model || defaultConfig.textModel, channels),
-                        audioModel: normalizeModelOptionValue(config.audioModel || defaultConfig.audioModel, channels),
-                        audioVoice: config.audioVoice || defaultConfig.audioVoice,
-                        audioFormat: config.audioFormat || defaultConfig.audioFormat,
-                        audioSpeed: config.audioSpeed || defaultConfig.audioSpeed,
-                        audioInstructions: config.audioInstructions || "",
-                        reasoningEffort: config.reasoningEffort || "auto",
-                        videoSeconds: config.videoSeconds || "6",
-                        vquality: config.vquality || "720",
-                        videoGenerateAudio: config.videoGenerateAudio || "true",
-                        videoWatermark: config.videoWatermark || "false",
-                        videoMode: config.videoMode === "reference" ? "reference" : "frames",
-                        canvasImageCount: config.canvasImageCount || "3",
-                        proxyEnabled: Boolean(config.proxyEnabled),
-                        proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
-                    },
-                };
-            },
-        },
-    ),
-);
+function isAiConfigReady(config: AiConfig, model: string) {
+    const found=findChannelModel(config,model);
+    if(!found) return false;
+    const channel=found.channel;
+    return Boolean(model.trim() && channel.baseUrl.trim() && (channel.apiKey.trim() || channel.hasApiKey));
+}
+
+let configEpoch=0;
+let saveQueue:Promise<unknown>=Promise.resolve();
+let queued=false;
+let configRevision=0;
+let savedConfig=defaultConfig;
+function scheduleConfigSave() {
+    if(queued) return;
+    const epoch=configEpoch;
+    queued=true;
+    queueMicrotask(()=>{
+        if(epoch!==configEpoch) return;
+        queued=false;
+        void useConfigStore.getState().saveConfig(useConfigStore.getState().config).catch(()=>{});
+    });
+}
+export const useConfigStore = create<ConfigStore>()((set,get)=>({
+    config:defaultConfig,webdav:defaultWebdavSyncConfig,loaded:false,error:"",isConfigOpen:false,configTab:"channels",shouldPromptContinue:false,
+    load:async()=>{
+        const epoch=++configEpoch;
+        try {
+        const [channels,preferences]=await Promise.all([workspaceRequest<{channels:ModelChannel[]}>("channels"),workspaceRequest<{preferences:Partial<AiConfig>}>("preferences")]);
+        if(epoch!==configEpoch) return;
+        const safeChannels=channels.channels.map(channel=>({...channel,apiKey:""}));
+        const config={...defaultConfig,...preferences.preferences,channels:safeChannels,models:modelOptionsFromChannels(safeChannels)};
+        config.imageModel=normalizeModelOptionValue(config.imageModel,safeChannels);
+        config.videoModel=normalizeModelOptionValue(config.videoModel,safeChannels);
+        config.textModel=normalizeModelOptionValue(config.textModel,safeChannels);
+        config.audioModel=normalizeModelOptionValue(config.audioModel,safeChannels);
+        savedConfig=config;
+        set({config,loaded:true,error:""});
+        } catch(error) {
+            if(epoch===configEpoch) set({error:error instanceof Error ? error.message : "配置加载失败"});
+            throw error;
+        }
+    },
+    saveConfig:async(next)=>{
+        if(!get().loaded) throw new Error("配置尚未加载，请刷新后重试；旧浏览器配置保持封存");
+        const epoch=configEpoch,revision=++configRevision;
+        set({config:next,error:""});
+        const action=async()=>{
+            if(epoch!==configEpoch) throw new Error("登录账号已改变，请重新保存");
+            const channels=next.channels.filter(channel=>channel.baseUrl.trim()).map(({apiKeyMask,hasApiKey,...channel})=>channel);
+            const {channels:unused,models,baseUrl,apiKey,apiFormat,channelMode,model,proxyEnabled,proxyUrl,...preferences}=next;
+            const saved=await workspaceJson<{channels:ModelChannel[];preferences:Partial<AiConfig>}>("configuration","PUT",{channels,preferences});
+            const savedChannels=saved.channels.map(channel=>({...channel,apiKey:""}));
+            if(epoch===configEpoch) {
+                savedConfig={...next,...saved.preferences,apiKey:"",channels:savedChannels,models:modelOptionsFromChannels(savedChannels)};
+                if(revision===configRevision) set({config:savedConfig,error:""});
+            }
+        };
+        const pending=saveQueue.then(action,action);
+        saveQueue=pending;
+        try {await pending;}
+        catch(error) {
+            if(epoch===configEpoch && revision===configRevision) set({config:savedConfig,error:error instanceof Error ? error.message : "配置保存失败"});
+            throw error;
+        }
+    },
+    flush:async()=>{await Promise.resolve();await saveQueue;},
+    updateConfig:(key,value)=>{
+        if((key==="proxyEnabled" || key==="proxyUrl") && get().config[key]!==value) requireAdminAction();
+        set(state=>({config:{...state.config,[key]:value}}));scheduleConfigSave();
+    },
+    importChannelCredentials:input=>{
+        const result=upsertChannelCredentials(get().config,input);
+        if(result.config!==get().config) {set({config:result.config});scheduleConfigSave();}
+        return {status:result.status,channelName:result.channelName};
+    },
+    updateWebdavConfig:()=>{throw new Error("旧浏览器 WebDAV 同步已停用，原配置及远端文件保持封存");},
+    isAiConfigReady,
+    openConfigDialog:(shouldPromptContinue=false,configTab="channels")=>set({isConfigOpen:true,shouldPromptContinue,configTab}),
+    setConfigDialogOpen:isConfigOpen=>set({isConfigOpen}),clearPromptContinue:()=>set({shouldPromptContinue:false}),
+}));
+useUserStore.subscribe((state,previous)=>{
+    if(state.user?.sessionId===previous.user?.sessionId) return;
+    configEpoch++;configRevision++;saveQueue=Promise.resolve();queued=false;savedConfig=defaultConfig;
+    useConfigStore.setState({config:defaultConfig,webdav:defaultWebdavSyncConfig,loaded:false,error:"",isConfigOpen:false});
+    if(state.user) void useConfigStore.getState().load().catch(()=>{});
+});
+if(useUserStore.getState().user) void useConfigStore.getState().load().catch(()=>{});
 
 export function useEffectiveConfig() {
     const config = useConfigStore((state) => state.config);
@@ -300,6 +319,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         name: channel?.name?.trim() || i18n.t("config.channels.newName"),
         baseUrl: channel?.baseUrl?.trim() || "",
         apiKey: channel?.apiKey || "",
+        hasApiKey:channel?.hasApiKey,apiKeyMask:channel?.apiKeyMask,clearApiKey:channel?.clearApiKey,
         apiFormat,
         models: normalizeChannelModels(channel?.models),
     };
@@ -417,7 +437,7 @@ export function resolveModelChannel(config: AiConfig, value: string) {
     return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
 }
 
-export function resolveModelRequestConfig(config: AiConfig, value: string) {
+export function resolveModelSelection(config: AiConfig, value: string) {
     const channel = resolveModelChannel(config, value);
     return {
         ...config,
@@ -428,36 +448,13 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
     };
 }
 
-function normalizeChannels(config: AiConfig) {
-    const persistedChannels = Array.isArray(config.channels) ? config.channels : [];
-    const channels = persistedChannels.map((channel, index) =>
-        createModelChannel({
-            ...channel,
-            id: channel.id || (index === 0 ? "default" : `channel-${index + 1}`),
-            name: channel.name || (index === 0 ? i18n.t("config.channels.defaultName") : i18n.t("config.channels.indexedName", { index: index + 1 })),
-            models: normalizeChannelModels(channel.models),
-        }),
-    );
-    return channels;
-}
-
-function removeLegacyDefaultChannel(config: Partial<AiConfig>): Partial<AiConfig> {
-    const channels = config.channels;
-    const channel = channels?.length === 1 ? channels[0] : null;
-    const modelNames = Array.isArray(channel?.models) ? channel.models.map((model) => model.name) : [];
-    const baseUrl = typeof channel?.baseUrl === "string" ? channel.baseUrl : "";
-    const apiKey = typeof channel?.apiKey === "string" ? channel.apiKey : "";
-    const legacyModels = ["gpt-image-2", "grok-imagine-video", "gpt-5.5", "gpt-4o-mini-tts"];
-    const isLegacyDefault = Boolean(
-        channel &&
-            channel.id === "default" &&
-            !apiKey.trim() &&
-            normalizedBaseUrlKey(baseUrl) === normalizedBaseUrlKey(OPENAI_BASE_URL) &&
-            modelNames.length === legacyModels.length &&
-            modelNames.every((name, index) => name === legacyModels[index]),
-    );
-    if (!isLegacyDefault) return config;
-    return { ...config, baseUrl: "", apiKey: "", model: "", imageModel: "", videoModel: "", textModel: "", audioModel: "", models: [], channels: [] };
+export async function resolveModelRequestConfig(config:AiConfig,value:string) {
+    const selected=resolveModelSelection(config,value);
+    const found=findChannelModel(config,value);
+    if(!found) throw new Error("所选模型不属于当前账号渠道，请重新选择");
+    const channel=found.channel;
+    const secret=await fetchRuntimeSecret(channel.id);
+    return {...selected,...secret};
 }
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {

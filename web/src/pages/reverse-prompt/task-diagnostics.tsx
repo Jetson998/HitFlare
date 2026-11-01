@@ -1,4 +1,3 @@
-import { Button } from "antd";
 import { Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCopyText } from "@/hooks/use-copy-text";
@@ -15,14 +14,14 @@ export function TaskDiagnostics() {
     const report = () => copyText(JSON.stringify({ taskId, stage: result.stage, errorCode, failureStage, diagnostics }, null, 2));
 
     return (
-        <details className="mt-3 rounded-md border border-border px-3 py-2">
-            <summary className="cursor-pointer text-xs text-muted-foreground">{t("reversePrompt.diagnostic.title")}</summary>
-            <div className="mt-3 space-y-3 text-xs leading-5">
+        <details className="rounded-2xl border border-[#E6E8EE] px-3 py-2 dark:border-stone-800">
+            <summary className="cursor-pointer text-[13px] leading-5 text-[#6B7280]">{t("reversePrompt.diagnostic.title")}</summary>
+            <div className="mt-3 space-y-3 text-[13px] leading-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="min-w-0 break-all text-muted-foreground">{t("reversePrompt.diagnostic.taskId")}：{taskId}</span>
-                    <Button type="text" size="small" className="shrink-0 !text-xs" icon={<Copy className="size-3.5" />} onClick={report}>{t("reversePrompt.diagnostic.copy")}</Button>
+                    <span className="min-w-0 break-all text-[#6B7280]">{t("reversePrompt.diagnostic.taskId")}：{taskId}</span>
+                    <button type="button" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-1 text-[13px] leading-5 text-[#374151] hover:bg-[#F3F4F6] dark:text-stone-200 dark:hover:bg-white/10" onClick={report}><span className="grid size-8 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-800 dark:text-stone-200"><Copy className="size-4" /></span>{t("reversePrompt.diagnostic.copy")}</button>
                 </div>
-                <p className="m-0 text-muted-foreground">{t("reversePrompt.diagnostic.notice")}</p>
+                <p className="m-0 text-[#6B7280]">{t("reversePrompt.diagnostic.notice")}</p>
                 {errorCode ? <div className="break-all">{t("reversePrompt.diagnostic.errorCode")}：{errorCode}</div> : null}
                 {failureStage ? <div>{t("reversePrompt.diagnostic.failureStage")}：{t(`reversePrompt.diagnostic.failure.${failureStage}`, { defaultValue: failureStage })}</div> : null}
                 {diagnostics ? <div>{t("reversePrompt.diagnostic.calls", { count: diagnostics.modelCallCount })}</div> : null}
@@ -37,24 +36,24 @@ export function TaskDiagnostics() {
                     ] as const;
                     return (
                         <div key={phase}>
-                            <div className="mb-1 font-medium">{t(`reversePrompt.diagnostic.${phase}`)}</div>
+                            <div className="mb-1 text-sm font-medium leading-5">{t(`reversePrompt.diagnostic.${phase}`)}</div>
                             <dl className="m-0 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
                                 {times.map(([key, value]) => value === undefined ? null : (
                                     <div key={key} className="contents">
-                                        <dt className="text-muted-foreground">{t(`reversePrompt.diagnostic.time.${key}`)}</dt>
+                                        <dt className="text-[#6B7280]">{t(`reversePrompt.diagnostic.time.${key}`)}</dt>
                                         <dd className="m-0 tabular-nums">{duration(value)}</dd>
                                     </div>
                                 ))}
-                                {call.outputChars !== undefined ? <><dt className="text-muted-foreground">{t("reversePrompt.diagnostic.outputChars")}</dt><dd className="m-0 tabular-nums">{call.outputChars}</dd></> : null}
-                                {call.reasoningEffort ? <><dt className="text-muted-foreground">{t("reversePrompt.diagnostic.reasoning")}</dt><dd className="m-0">{call.reasoningEffort}</dd></> : null}
-                                {call.endReason ? <><dt className="text-muted-foreground">{t("reversePrompt.diagnostic.endReason")}</dt><dd className="m-0">{t(`reversePrompt.diagnostic.end.${call.endReason}`)}</dd></> : null}
+                                {call.outputChars !== undefined ? <><dt className="text-[#6B7280]">{t("reversePrompt.diagnostic.outputChars")}</dt><dd className="m-0 tabular-nums">{call.outputChars}</dd></> : null}
+                                {call.reasoningEffort ? <><dt className="text-[#6B7280]">{t("reversePrompt.diagnostic.reasoning")}</dt><dd className="m-0">{call.reasoningEffort}</dd></> : null}
+                                {call.endReason ? <><dt className="text-[#6B7280]">{t("reversePrompt.diagnostic.endReason")}</dt><dd className="m-0">{t(`reversePrompt.diagnostic.end.${call.endReason}`)}</dd></> : null}
                             </dl>
                         </div>
                     );
                 })}
                 {diagnostics?.failure?.issues?.length ? (
                     <div>
-                        <div className="mb-1 font-medium">{t("reversePrompt.diagnostic.issues")}</div>
+                        <div className="mb-1 text-sm font-medium leading-5">{t("reversePrompt.diagnostic.issues")}</div>
                         <ul className="m-0 list-disc space-y-1 pl-4">
                             {diagnostics.failure.issues.map((issue, index) => <li key={index} className="break-all">{issue.path || "$"} · {issue.code}</li>)}
                         </ul>

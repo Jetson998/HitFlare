@@ -1,6 +1,6 @@
 import { ArrowRight, BotMessageSquare, Image as ImageIcon, Paperclip, Send, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, Spin } from "antd";
+import { Button, Card, Spin } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -45,7 +45,7 @@ export default function HomePage() {
     return (
         <main className="h-full overflow-y-auto bg-background text-foreground">
             <section aria-labelledby="brand-title" className="border-b border-stone-200 dark:border-stone-800">
-                <div className="workspace-gutter flex flex-col items-center justify-center py-16 text-center @min-[768px]/shell:min-h-[calc(100dvh_-_3.5rem)] @min-[768px]/shell:py-20">
+                <div className="workspace-gutter flex flex-col items-center justify-center py-16 text-center @min-[768px]/shell:min-h-[100dvh] @min-[768px]/shell:py-20">
                     <Logo size={58} variant={english ? "horizontal-en" : "wordmark"} />
                     <p className="mt-8 text-xs font-semibold tracking-[0.24em] text-stone-400">A SPACE FOR YOUR NEXT IDEA</p>
                     <h1 id="brand-title" className="mt-4 max-w-4xl text-[32px] font-semibold leading-[42px] tracking-[-0.02em] @min-[768px]/shell:text-[48px] @min-[768px]/shell:leading-[60px]">{english ? <>Guided by Flare,<br />Created to Shine.</> : "热流即引，创作即闪耀。"}</h1>
@@ -57,7 +57,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            <section aria-labelledby="workspace-preview-title" className="workspace-gutter flex flex-col justify-center py-10 @min-[768px]/shell:min-h-[calc(100dvh_-_3.5rem)] @min-[768px]/shell:py-12">
+            <section aria-labelledby="workspace-preview-title" className="workspace-gutter flex flex-col justify-center py-10 @min-[768px]/shell:min-h-[100dvh] @min-[768px]/shell:py-12">
                 <div className="mx-auto w-full max-w-[1320px]">
                     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                         <div>
@@ -125,21 +125,23 @@ export default function HomePage() {
                 </div>
             </section>
 
-            <section aria-labelledby="scenes-title" className="border-t border-stone-200 dark:border-stone-800">
-                <div className="workspace-gutter py-8">
+            <section aria-labelledby="scenes-title" className="workspace-gutter py-8">
+                <div className="mx-auto w-full max-w-[1320px]">
                     <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                         <div>
                             <p className="text-xs font-semibold tracking-widest text-stone-400">{english ? "SCENE TEMPLATES" : "场景"}</p>
                             <h2 id="scenes-title" className="mt-3 text-2xl font-semibold leading-8">{english ? "A starting point for every scene" : "为每一种场景，找到起点"}</h2>
-                            <p className="mt-3 text-sm leading-7 text-stone-500 dark:text-stone-400">{english ? "Three useful templates. Your materials, your choices." : "商品换背景、真人试穿、营销封面，从常用场景开始。"}</p>
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-500 dark:text-stone-400">{english ? "Three useful templates. Your materials, your choices." : "商品换背景、真人试穿、营销封面，从常用场景开始。"}</p>
                         </div>
                         <Link to="/image?tab=templates" className="flex shrink-0 items-center gap-2 text-sm font-medium">{english ? "Explore all scenes" : "查看全部场景"}<ArrowRight className="size-4" /></Link>
                     </div>
-                    {templates.isPending ? <Spin /> : templates.isError ? <Button onClick={() => void templates.refetch()}>{english ? "Reload scenes" : "重新加载场景模板"}</Button> : (
-                        <div className="workspace-grid">
-                            {templates.data?.map((template) => <Link key={template.id} to={`/image?tab=templates&template=${encodeURIComponent(template.id)}`} className="group overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-[0_4px_12px_rgba(17,24,39,.06)]">
-                                <img src={template.cover_url} alt={template.title} loading="lazy" className="aspect-[2.2/1] w-full object-cover" />
-                                <div className="p-4"><h3 className="font-semibold">{template.title}</h3><p className="mt-2 text-[13px] leading-5 text-stone-500 dark:text-stone-400">{template.vars_schema.map((variable) => variable.label).join(" · ")}</p></div>
+                    {templates.isPending ? <div className="flex h-48 items-center justify-center"><Spin /></div> : templates.isError ? <Button onClick={() => void templates.refetch()}>{english ? "Reload scenes" : "重新加载场景模板"}</Button> : (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 @min-[1100px]/shell:grid-cols-4">
+                            {templates.data?.map((template) => <Link key={template.id} to={`/image?tab=templates&template=${encodeURIComponent(template.id)}`} className="block h-full">
+                                <Card hoverable className="group h-full cursor-pointer overflow-hidden transition-transform duration-200 hover:-translate-y-1" styles={{ body: { padding: 0 } }}>
+                                    <img src={template.cover_url} alt={template.title} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                                    <div className="px-3 py-2.5"><h3 className="line-clamp-1 text-sm font-semibold text-stone-950 dark:text-stone-100">{template.title}</h3></div>
+                                </Card>
                             </Link>)}
                         </div>
                     )}

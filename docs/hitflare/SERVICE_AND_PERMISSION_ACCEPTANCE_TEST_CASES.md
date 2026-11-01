@@ -1,8 +1,10 @@
 # HitFlare 服务化与权限体系验收测试用例
 
-状态：验收测试方案  
-更新时间：2026-09-14  
+状态：原需求验收矩阵；P1 人工通过，P2～P6 AI 自测完成并待集中人工验收
+
 适用范围：后端完成用户数据服务化后，以及完整权限系统上线前后的验收。
+
+实际接口、用例修订和证据以 [分阶段计划](./SERVICEIZATION_PHASED_DEVELOPMENT_LOCAL_TEST_PLAN.md)、[P6 集中验收包](./SERVICEIZATION_P6_ACCEPTANCE.md) 与 [阶段成果记录](./SERVICEIZATION_STAGE_HISTORY.md) 为准。下文 `/api/me/*`、prompt-sources/local-storage/WebDAV 等保留原需求草案用于追踪，不是当前可调用接口；当前使用 `/api/workspace/*`、`/api/generations`、`/api/canvases`、`/api/admin/inspiration-sources` 和 `/api/admin/storage-diagnostics`。WebDAV 不适用，runtime-secret 仅本人为秘密响应例外；该矩阵不能直接作为逐项已通过结论。
 
 权限壳先行与服务化后端逐步接入的协作方案见：[`SERVICE_COLLABORATION_PERMISSION_INTEGRATION_PLAN.md`](SERVICE_COLLABORATION_PERMISSION_INTEGRATION_PLAN.md)。
 
@@ -126,10 +128,16 @@ aliceCanvasId
 | GEN-005 | 幂等请求 | bill 使用同一 `clientRequestId` 重复创建 | 返回同一记录，不重复写历史 |
 | GEN-006 | 用户历史隔离 | bill、alice 分别请求 `/api/me/generations` | 只返回各自历史 |
 | GEN-007 | 交叉读取历史 | bill 请求 alice 的 generationId | 返回 `404` 或统一拒绝 |
-| GEN-008 | 输出对象归属校验 | bill 给自己的 generation 绑定 alice 的 objectId | 返回 `404` 或拒绝 |
-| GEN-009 | 管理员请求日志只看元数据 | admin 请求 `/api/admin/request-logs` | 能看用户、模型、状态、耗时、长度、哈希；不能看完整提示词和媒体 |
+| GEN-008 | 输出调用与对象归属校验 | bill 给自己的 generation 绑定 alice 的 callId/objectId，或绑定 bill 另一任务的 callId | 返回 `404` 或拒绝，不能跨用户/任务绑定 |
+| GEN-009 | 管理员请求日志只看元数据 | admin 请求 `/api/admin/request-logs` | 能看任务/调用关联、用户、模型、状态、耗时、长度、上游状态码及安全 code/type/request ID；不能看提示词全文/片段/hash、媒体或 Key |
 | GEN-010 | 用户可看自己完整提示词 | bill 请求自己的 generation detail | 能看到自己完整提示词和参数 |
 | GEN-011 | 日志无 Key | 检查生成相关服务端日志 | 没有 API Key、Authorization Header、完整供应商请求体 |
+| GEN-012 | 上游错误码保留 | 用假模型逐项返回 400/401/403/404/408/413/422/429/5xx，含安全 code/type/request ID；另测非 JSON、200 流内错误和无响应异常 | 日志保留具体上游 HTTP 值和安全原始 code/type/ID，与应用错误分开；200 流内失败保留 200，无响应为 null，错误原文/秘密不泄露 |
+| GEN-013 | 多图、多次调用和手动重试 | 一个任务分次生成 3 图，其中一条上游 403；手动仅重试该槽位且成功 | 1 个任务、4 个 callId、3 张最终输出；旧 403 和 retryOfCallId 保留，每张输出关联生产调用；任务汇总不隐藏失败调用 |
+| GEN-014 | 单次调用多输出与报告幂等 | 一次 n=3 请求返回 3 图/一次 usage；重复上报结果及绑定输出，重放创建请求 | 1 个实际调用、3 条输出，usage/费用只汇总一次；同 callId 不同身份/归属不可覆盖，输出重复绑定幂等、不同对象冲突拒绝 |
+| GEN-015 | 操作错误不重复计生成消费 | 视频创建后多次 GET 轮询；生图成功后上传 413/保存失败，再保存已有字节 | 轮询/下载/上传/保存作为操作记录关联原任务/调用，保留各环节错误码；不新增模型调用，不覆盖原模型成功与 usage |
+
+日志关系、来源与阶段验收的完整预期见 [分阶段计划第 3.1.1 节](./SERVICEIZATION_PHASED_DEVELOPMENT_LOCAL_TEST_PLAN.md#311-上游错误码与任务模型调用输出关联已确认)、P3 的 `LOG-001～004`、P5 的 `ADMIN-LOG-001/002`。实际自测证据见 P3/P5 验收包，人工结论仍待集中填写。
 
 ### 3.6 画布项目服务端化
 

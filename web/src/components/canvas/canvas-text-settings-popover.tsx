@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Settings2 } from "lucide-react";
-import { Button, InputNumber } from "antd";
+import { Button } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { reasoningEffortLabel, TextSettingsPanel } from "@/components/text-settings-panel";
@@ -83,20 +83,18 @@ function TextSettingsPortal({ buttonRect, panelRef, placement, theme, config, co
         width,
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
         ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap } : { top: buttonRect.bottom + gap }),
-        background: theme.toolbar.panel,
-        borderRadius: 18,
-        boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
-        padding: 18,
-        color: theme.node.text,
+        borderRadius: 20,
+        boxShadow: "0 12px 40px rgba(15,23,42,.1)",
+        padding: "16px 20px",
     } as const;
 
     return createPortal(
-        <div ref={panelRef} style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
-            <TextSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} />
+        <div ref={panelRef} className="bg-white text-[#111827] dark:bg-stone-900 dark:text-stone-100" style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+            <TextSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} tone="plain" />
             {onCountChange ? (
-                <div className="mt-4 space-y-2.5">
-                    <div className="text-sm font-medium" style={{ color: theme.node.muted }}>{t("settingsPanels.text.count")}</div>
-                    <InputNumber className="w-full" min={1} max={15} precision={0} value={count} onChange={(value) => onCountChange(value || 1)} />
+                <div className="mt-4 space-y-2">
+                    <div className="text-[13px] font-medium leading-5 text-[#6B7280]">{t("settingsPanels.text.count")}</div>
+                    <input type="number" min={1} max={15} value={count || 1} className="h-9 w-full rounded-full border border-[#E6E8EE] bg-white px-3 text-center text-[13px] leading-5 text-[#111827] outline-none [appearance:textfield] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" onChange={(event) => onCountChange(Math.max(1, Math.min(15, Math.floor(Number(event.target.value) || 1))))} onMouseDown={(event) => event.stopPropagation()} />
                 </div>
             ) : null}
         </div>,

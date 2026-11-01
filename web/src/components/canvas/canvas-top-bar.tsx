@@ -9,6 +9,7 @@ import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { DOCS_URL } from "@/constant/env";
 import { useIsAdmin } from "@/lib/permissions";
+import { CanvasSaveStatus } from "./canvas-save-status";
 
 export function CanvasTopBar({
     title,
@@ -137,6 +138,7 @@ export function CanvasTopBar({
                             </button>
                         )}
                     </div>
+                    <CanvasSaveStatus />
                     {isAdmin ? <CompactAgentStatus status={compactAgentStatus} onClick={onToggleAgent} /> : null}
                 </div>
 

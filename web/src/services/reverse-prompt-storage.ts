@@ -21,6 +21,7 @@ export type ReversePromptResult = {
     prompt?: VisualPrompt | null;
     observationPreview?: ReversePromptObservationPreview | null;
     stage?: string | null;
+    taskStatus?: "queued" | "analyzing" | "refining" | "completed" | "failed" | "stopped" | "interrupted";
 };
 export type ReversePromptHistory = {
     id: string;
@@ -36,9 +37,12 @@ export type ReversePromptHistory = {
     successCount: number;
     failCount: number;
     imageCount: number;
+    thumbnails?: string[];
     time: string;
     itemUnit: "prompt";
     resultText: string;
+    statusLabel?: string;
+    statusTone?: "running" | "success" | "failed" | "neutral";
     source?: VisualImageSource;
     analysis?: VisualAnalysis | null;
     prompt?: VisualPrompt | null;

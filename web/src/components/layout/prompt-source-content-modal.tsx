@@ -1,6 +1,6 @@
 import { App, Button, Empty, Modal, Space, Table, Tag } from "antd";
 import { Copy, FolderPlus, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { PromptDetailDialog } from "@/components/prompts/prompt-detail-dialog";
@@ -17,6 +17,8 @@ export function PromptSourceContentModal({ source, onClose }: { source: PromptSo
     const [loading, setLoading] = useState(false);
     const [detail, setDetail] = useState<Prompt | null>(null);
     const isAdmin = useIsAdmin();
+    const alive = useRef(true);
+    useEffect(()=>{alive.current=true;return ()=>{alive.current=false;};},[]);
     const copyText = useCopyText();
     const addAsset = useAssetStore((state) => state.addAsset);
 
@@ -25,11 +27,12 @@ export function PromptSourceContentModal({ source, onClose }: { source: PromptSo
             if (!source) return;
             setLoading(true);
             try {
-                setItems(force ? await refreshSourceItems(source.id) : await fetchSourcePrompts(source.id));
+                const result=force ? await refreshSourceItems(source.id) : await fetchSourcePrompts(source.id);
+                if(alive.current)setItems(result);
             } catch (error) {
-                message.error(error instanceof Error ? error.message : t("config.promptSources.content.loadFailed"));
+                if(alive.current)message.error(error instanceof Error ? error.message : t("config.promptSources.content.loadFailed"));
             } finally {
-                setLoading(false);
+                if(alive.current)setLoading(false);
             }
         },
         [source, message, t],
@@ -40,9 +43,11 @@ export function PromptSourceContentModal({ source, onClose }: { source: PromptSo
         else setItems([]);
     }, [source, load]);
 
-    const saveAsset = (item: Prompt) => {
-        addAsset({ kind: "text", title: item.title, coverUrl: item.coverUrl, tags: item.tags, source: item.category, data: { content: item.prompt }, metadata: { source: "prompt-library", promptId: item.id, githubUrl: item.githubUrl } });
-        message.success(t("common.addedToAssets"));
+    const saveAsset = async (item: Prompt) => {
+        try {
+            await addAsset({ kind: "text", title: item.title, coverUrl: item.coverUrl, tags: item.tags, source: item.category, data: { content: item.prompt }, metadata: { source: "prompt-library", promptId: item.id, githubUrl: item.githubUrl } });
+            message.success(t("common.addedToAssets"));
+        } catch (error) { message.error(error instanceof Error ? error.message : "资产保存失败，请稍后重试"); }
     };
 
     return (
@@ -58,7 +63,7 @@ export function PromptSourceContentModal({ source, onClose }: { source: PromptSo
                             <div className="text-base font-semibold">{t("config.promptSources.content.title", { name: source?.name || "" })}</div>
                             <div className="mt-0.5 text-xs font-normal text-stone-500">{t("config.promptSources.content.count", { count: items.length })}</div>
                         </div>
-                        <Button size="small" disabled={!isAdmin} icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void load(true)}>
+                        <Button size="small" disabled={!isAdmin || !source?.url} icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void load(true)}>
                             {t("config.promptSources.content.refresh")}
                         </Button>
                     </div>

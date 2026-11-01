@@ -1,10 +1,12 @@
+import {trackedPluginRequest,type GenerationContext} from "./generations";
+import {providerApiError} from "./provider-error";
 import axios, { type AxiosRequestConfig } from "axios";
 
 import i18n from "@/i18n";
 import { requireAdminAction } from "@/lib/permissions";
 import { buildApiUrl, withLocalProxy, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 
-type RequestOptions = { signal?: AbortSignal };
+type RequestOptions = { signal?: AbortSignal;generation?:GenerationContext;imageOutput?:boolean };
 
 export type PluginHttpOptions = {
     headers?: Record<string, string>;
@@ -32,6 +34,7 @@ export type RunPluginArgs = {
     params?: Record<string, unknown>;
     signal?: AbortSignal;
     onDelta?: (text: string) => void;
+    generation?:GenerationContext;
 };
 
 function pluginHeaders(extra?: Record<string, string>, hasJsonBody = false): Record<string, string> {
@@ -48,7 +51,7 @@ function pluginUrl(config: AiConfig, path: string) {
 function createPluginHttp(config: AiConfig, options?: RequestOptions): PluginHttp {
     const run = async (method: "get" | "post", path: string, body: unknown, opts?: PluginHttpOptions) => {
         const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-        const response = await axios.request({
+        const response = await trackedPluginRequest(options?.generation,method,()=>axios.request({
             method,
             url: pluginUrl(config, path),
             data: method === "post" ? body : undefined,
@@ -56,7 +59,7 @@ function createPluginHttp(config: AiConfig, options?: RequestOptions): PluginHtt
             headers: pluginHeaders({ Authorization: `Bearer ${config.apiKey}`, ...opts?.headers }, method === "post" && !isForm && body !== undefined),
             responseType: opts?.responseType || "json",
             signal: options?.signal,
-        });
+        }),options?.imageOutput?pluginResponseImages:undefined);
         return response.data;
     };
     return {
@@ -69,7 +72,7 @@ function createPluginHttp(config: AiConfig, options?: RequestOptions): PluginHtt
 /** Raw request with no automatic auth header — the script controls method, url, headers, body entirely. */
 function createPluginRequest(config: AiConfig, options?: RequestOptions) {
     return async (requestConfig: AxiosRequestConfig & { url: string }) => {
-        const response = await axios.request({ ...requestConfig, url: pluginUrl(config, requestConfig.url), signal: options?.signal });
+        const response = await trackedPluginRequest(options?.generation,requestConfig.method || "get",()=>axios.request({ ...requestConfig, url: pluginUrl(config, requestConfig.url), signal: options?.signal }),options?.imageOutput?pluginResponseImages:undefined);
         return response.data;
     };
 }
@@ -114,8 +117,8 @@ function createPoll(signal?: AbortSignal) {
 export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<T> {
     requireAdminAction();
     const { config } = args;
-    const http = createPluginHttp(config, { signal: args.signal });
-    const request = createPluginRequest(config, { signal: args.signal });
+    const http = createPluginHttp(config, { signal: args.signal,generation:args.generation,imageOutput:args.capability==="image" });
+    const request = createPluginRequest(config, { signal: args.signal,generation:args.generation,imageOutput:args.capability==="image" });
     const poll = createPoll(args.signal);
     const runner = new Function(
         "prompt",
@@ -161,7 +164,7 @@ export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<
         if (error instanceof DOMException && error.name === "AbortError") throw error;
         if (axios.isCancel(error)) throw error;
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(i18n.t("modelPlugin.executionFailed", { message }));
+        throw providerApiError(error,i18n.t("modelPlugin.executionFailed", { message }),config.apiKey);
     }
 }
 
@@ -992,4 +995,10 @@ export function normalizePluginImages(result: unknown): string[] {
         .filter(Boolean);
     if (!urls.length) throw new Error(i18n.t("modelPlugin.noImages"));
     return urls;
+}
+
+function pluginResponseImages(value:unknown) {
+    if(!value || typeof value!=="object")return normalizePluginImages(value);
+    const body=value as Record<string,unknown>;
+    return normalizePluginImages(body.data || body.images || body.results || value);
 }

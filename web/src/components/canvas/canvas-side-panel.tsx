@@ -1,3 +1,4 @@
+import { useUserStore } from "@/stores/use-user-store";
 import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { App, Empty, Input, Popconfirm, Select, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
@@ -305,10 +306,10 @@ const ASSET_GROUPS: { kind: AssetKind; icon: typeof Square }[] = [
 ];
 
 function buildInsertPayload(asset: Asset): InsertAssetPayload {
-    if (asset.kind === "text") return { kind: "text", content: asset.data.content, title: asset.title };
-    if (asset.kind === "video") return { kind: "video", url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title, width: asset.data.width, height: asset.data.height };
-    if (asset.kind === "audio") return { kind: "audio", url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title };
-    return { kind: "image", dataUrl: asset.data.dataUrl, storageKey: asset.data.storageKey, title: asset.title };
+    if (asset.kind === "text") return { kind: "text", assetId: asset.id, content: asset.data.content, title: asset.title };
+    if (asset.kind === "video") return { kind: "video", assetId: asset.id, url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title, width: asset.data.width, height: asset.data.height };
+    if (asset.kind === "audio") return { kind: "audio", assetId: asset.id, url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title };
+    return { kind: "image", assetId: asset.id, dataUrl: asset.data.dataUrl, storageKey: asset.data.storageKey, title: asset.title };
 }
 
 const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onInsert: (payload: InsertAssetPayload) => void; theme: CanvasTheme }) {
@@ -341,12 +342,12 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
             for (const file of files) {
                 if (file.type.startsWith("image/")) {
                     const image = await uploadImage(file);
-                    addImageToAssets(image, { title: file.name, origin: "upload", source: "画布" });
+                    await addImageToAssets(image, { title: file.name, origin: "upload", source: "画布" });
                     added += 1;
                 } else if (file.type.startsWith("video/") || file.type.startsWith("audio/")) {
                     const kind = file.type.startsWith("audio/") ? "audio" : "video";
                     const media = await uploadMediaFile(file, kind);
-                    addMediaToAssets(kind, media, { title: file.name, origin: "upload", source: "画布" });
+                    await addMediaToAssets(kind, media, { title: file.name, origin: "upload", source: "画布" });
                     added += 1;
                 }
             }
@@ -354,7 +355,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
             else message.warning(t("canvas.sidePanel.mediaOnly"));
         } catch (error) {
             console.error(error);
-            message.error(t("canvas.sidePanel.addFailed"));
+            message.error(error instanceof Error ? error.message : t("canvas.sidePanel.addFailed"));
         } finally {
             hide();
             setUploading(false);
@@ -410,7 +411,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
                                     {isCollapsed ? null : (
                                         <div className="grid grid-cols-2 gap-2 px-1 pb-2 pt-1">
                                             {group.items.map((asset) => (
-                                                <AssetCard key={asset.id} asset={asset} theme={theme} onInsert={() => onInsert(buildInsertPayload(asset))} onRemove={() => (removeAsset(asset.id), message.success(t("canvas.sidePanel.assetRemoved")))} />
+                                                <AssetCard key={asset.id} asset={asset} theme={theme} onInsert={() => onInsert(buildInsertPayload(asset))} onRemove={async()=>{try{await removeAsset(asset.id);message.success(t("canvas.sidePanel.assetRemoved"));}catch(error){message.error(error instanceof Error ? error.message : "资产删除失败");}}} />
                                             ))}
                                         </div>
                                     )}
@@ -534,8 +535,9 @@ function PromptSourceGroup({
 }) {
     const { t } = useTranslation();
     // Cache a source after its first expansion to avoid repeated requests; search results also need the data for counts.
+    const identity=useUserStore(state=>state.user?.sessionId);
     const showResults = open || !!keyword.trim();
-    const query = useQuery({ queryKey: ["side-panel-prompts", sourceId], queryFn: () => fetchSourcePrompts(sourceId), enabled: showResults, staleTime: 1000 * 60 * 60 });
+    const query = useQuery({ queryKey: ["side-panel-prompts",identity, sourceId], queryFn: () => fetchSourcePrompts(sourceId), enabled: showResults, staleTime: 1000 * 60 * 60 });
 
     const filtered = useMemo(() => {
         const items = query.data || [];

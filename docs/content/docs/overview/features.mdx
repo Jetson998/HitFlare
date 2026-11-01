@@ -5,6 +5,13 @@ description: Major features available in the current project
 
 # Features
 
+## 权限与账号基础
+
+- 服务化 P1 已由用户人工验收通过：身份由 HttpOnly session 与默认租户解析，前端使用服务端权限快照控制入口。
+- 管理员建号、禁用、角色变更和代设密码均由后端执行并记录审计；撤权使旧 session 和事件流失效，禁用阻止 Agent/反推继续执行与写入晚到成功。
+- auth、Agent 与反推三个现有数据库在已知旧版本升级前使用 SQLite 在线备份与 checksum 校验，未知或损坏结构拒绝覆盖；恢复写入新目录。
+- 此验收仅覆盖 P1 基础底座，其余配置、资产、历史与画布按后续阶段验收。
+
 ## 品牌导航
 
 - 顶部使用本地 HitFlare 光引 Logo，图片高度 42px、上移 4px，使字标与菜单文字协调；尺寸与对齐已由用户验收。

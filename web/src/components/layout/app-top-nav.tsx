@@ -3,7 +3,7 @@ import { Button, Tooltip } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { adminNavigationTool, navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
+import { visibleNavigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { AppConfigModal } from "@/components/layout/app-config-modal";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
@@ -27,8 +27,8 @@ export function AppTopNav() {
     const panelOpen = useAgentStore((state) => state.panelOpen);
     const creativePanelOpen = useCreativeAgentStore((state) => state.panelOpen);
     const toggleCreativePanel = useCreativeAgentStore((state) => state.toggle);
-    const isAdmin = useUserStore((state) => state.user?.role === "admin");
-    const visibleTools = isAdmin ? [...navigationTools, adminNavigationTool] : navigationTools;
+    const isAdmin = useUserStore((state) => state.user?.permissions?.includes("account:manage") === true);
+    const visibleTools = visibleNavigationTools(isAdmin);
     const hideHeader = /^\/canvas\/[^/]+/.test(pathname);
     const activeToolSlug = visibleTools.find((tool) => tool.path === pathname)?.slug as NavigationToolSlug | undefined;
     const isCanvasProject = /^\/canvas\//.test(pathname);

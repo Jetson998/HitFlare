@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
-import { Slider } from "antd";
+import { ConfigProvider, Slider } from "antd";
+import { ArrowLeftRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
@@ -28,9 +29,10 @@ type VideoSettingsPanelProps = {
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
+    tone?: "theme" | "plain";
 };
 
-export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
+export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", tone = "theme" }: VideoSettingsPanelProps) {
     const { t } = useTranslation();
     const seconds = Number(clampVideoSeconds(config.videoSeconds || "6"));
     const videoMode = normalizeVideoModeValue(config.videoMode);
@@ -45,64 +47,66 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
         if (selectedRatio === "auto") onConfigChange("vquality", nextResolution);
         else applySize(nextResolution, selectedRatio);
     };
-
-    return (
-        <ImageSettingsTheme theme={theme}>
-            <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
-                {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.video.title")}</div> : null}
-                <SettingGroup title={t("settingsPanels.video.quality")} color={theme.node.muted}>
-                    <div className="grid grid-cols-4 gap-2.5">
+    const plain = tone === "plain";
+    const muted = plain ? "#6B7280" : theme.node.muted;
+    const panel = (
+            <div className={className} style={{ color: plain ? undefined : theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
+                {showTitle ? <div className={plain ? "text-[15px] font-medium leading-6" : "text-lg font-semibold"}>{t("settingsPanels.video.title")}</div> : null}
+                <SettingGroup title={t("settingsPanels.video.quality")} color={muted} plain={plain}>
+                    <div className={plain ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-4 gap-2.5"}>
                         {resolutionOptions.map((item) => (
-                            <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => selectResolution(item.value)}>
+                            <OptionPill key={item.value} selected={resolution === item.value} theme={theme} tone={tone} onClick={() => selectResolution(item.value)}>
                                 {item.label}
                             </OptionPill>
                         ))}
-                        <ResolutionInput value={resolution} theme={theme} onChange={selectResolution} />
+                        <ResolutionInput value={resolution} theme={theme} tone={tone} onChange={selectResolution} />
                     </div>
                 </SettingGroup>
-                <SettingGroup title={t("settingsPanels.video.size")} color={theme.node.muted}>
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
-                        <DimensionInput prefix="W" value={dimensions.width} disabled={selectedRatio === "auto"} theme={theme} onChange={(value) => updateDimension("width", value, dimensions, onConfigChange)} />
-                        <span className="text-lg opacity-45">↔</span>
-                        <DimensionInput prefix="H" value={dimensions.height} disabled={selectedRatio === "auto"} theme={theme} onChange={(value) => updateDimension("height", value, dimensions, onConfigChange)} />
+                <SettingGroup title={t("settingsPanels.video.size")} color={muted} plain={plain}>
+                    <div className={plain ? "grid grid-cols-[1fr_auto_1fr] items-center gap-2" : "grid grid-cols-[1fr_auto_1fr] items-center gap-2.5"}>
+                        <DimensionInput prefix="W" value={dimensions.width} disabled={selectedRatio === "auto"} theme={theme} tone={tone} onChange={(value) => updateDimension("width", value, dimensions, onConfigChange)} />
+                        {plain ? <ArrowLeftRight className="size-3.5 text-[#98A2B3]" /> : <span className="text-lg opacity-45">↔</span>}
+                        <DimensionInput prefix="H" value={dimensions.height} disabled={selectedRatio === "auto"} theme={theme} tone={tone} onChange={(value) => updateDimension("height", value, dimensions, onConfigChange)} />
                     </div>
                 </SettingGroup>
-                <SettingGroup title={t("settingsPanels.video.ratio")} color={theme.node.muted}>
-                    <div className="grid grid-cols-4 gap-2.5">
-                        {videoRatioOptions.map((item) => (
-                            <button
-                                key={item.value}
-                                type="button"
-                                className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
-                                style={{ borderColor: selectedRatio === item.value ? theme.node.text : theme.node.stroke, color: theme.node.text }}
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onClick={() => applySize(resolution, item.value)}
-                            >
-                                <SizePreview width={item.width} height={item.height} color={theme.node.text} />
-                                <span>{item.value === "auto" ? t("settingsPanels.common.auto") : item.value}</span>
-                            </button>
-                        ))}
+                <SettingGroup title={t("settingsPanels.video.ratio")} color={muted} plain={plain}>
+                    <div className={plain ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-4 gap-2.5"}>
+                        {videoRatioOptions.map((item) => {
+                            const selected = selectedRatio === item.value;
+                            const label = item.value === "auto" ? t("settingsPanels.common.auto") : item.value;
+                            return plain ? (
+                                <button key={item.value} type="button" className={`grid h-8 w-full cursor-pointer grid-cols-[14px_minmax(0,1fr)] items-center gap-1 rounded-full px-2 text-[13px] leading-5 transition ${selected ? "bg-[#111827] font-medium !text-white dark:bg-white dark:!text-[#111827]" : "bg-[#F3F4F6] text-[#111827] hover:bg-[#E5E7EB] dark:bg-stone-800 dark:text-stone-100"}`} style={selected ? { color: "#fff", WebkitTextFillColor: "#fff" } : undefined} onMouseDown={(event) => event.stopPropagation()} onClick={() => applySize(resolution, item.value)}>
+                                    <SizePreview width={item.width} height={item.height} color={selected ? "#fff" : "#111827"} compact />
+                                    <span className="truncate text-center">{label}</span>
+                                </button>
+                            ) : (
+                                <button key={item.value} type="button" className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80" style={{ borderColor: selected ? theme.node.text : theme.node.stroke, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onClick={() => applySize(resolution, item.value)}>
+                                    <SizePreview width={item.width} height={item.height} color={theme.node.text} />
+                                    <span>{label}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </SettingGroup>
-                <SettingGroup title={t("settingsPanels.video.seconds")} color={theme.node.muted}>
+                <SettingGroup title={t("settingsPanels.video.seconds")} color={muted} plain={plain}>
                     <div className="flex items-center gap-3" onMouseDown={(event) => event.stopPropagation()}>
                         <Slider className="min-w-0 flex-1" min={VIDEO_SECONDS_MIN} max={VIDEO_SECONDS_MAX} step={1} value={seconds} onChange={(value) => onConfigChange("videoSeconds", String(Array.isArray(value) ? value[0] : value))} />
-                        <SecondsInput value={seconds} theme={theme} onCommit={(value) => onConfigChange("videoSeconds", String(value))} />
-                        <span className="shrink-0 text-sm" style={{ color: theme.node.muted }}>s</span>
+                        <SecondsInput value={seconds} theme={theme} tone={tone} onCommit={(value) => onConfigChange("videoSeconds", String(value))} />
+                        <span className="shrink-0 text-[13px] leading-5" style={{ color: muted }}>s</span>
                     </div>
                 </SettingGroup>
-                <SettingGroup title={t("settingsPanels.video.mode")} color={theme.node.muted}>
-                    <div className="grid grid-cols-2 gap-2.5">
+                <SettingGroup title={t("settingsPanels.video.mode")} color={muted} plain={plain}>
+                    <div className={plain ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-2 gap-2.5"}>
                         {videoModeOptions.map((item) => (
-                            <OptionPill key={item.value} selected={videoMode === item.value} theme={theme} onClick={() => onConfigChange("videoMode", item.value)}>
+                            <OptionPill key={item.value} selected={videoMode === item.value} theme={theme} tone={tone} onClick={() => onConfigChange("videoMode", item.value)}>
                                 {t(`settingsPanels.video.modes.${item.labelKey}`)}
                             </OptionPill>
                         ))}
                     </div>
                 </SettingGroup>
             </div>
-        </ImageSettingsTheme>
     );
+    return plain ? <ConfigProvider theme={{ token: { colorPrimary: "#111827" }, components: { Slider: { railBg: "#E5E7EB", railHoverBg: "#E5E7EB", trackBg: "#111827", trackHoverBg: "#111827", handleColor: "#111827", handleActiveColor: "#111827" } } }}>{panel}</ConfigProvider> : <ImageSettingsTheme theme={theme}>{panel}</ImageSettingsTheme>;
 }
 
 export function videoResolutionLabel(value: string) {
@@ -143,18 +147,18 @@ function updateDimension(key: "width" | "height", value: number | null, dimensio
     onConfigChange("size", `${key === "width" ? next : dimensions.width}x${key === "height" ? next : dimensions.height}`);
 }
 
-function OptionPill({ selected, disabled = false, theme, onClick, children }: { selected: boolean; disabled?: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
+function OptionPill({ selected, disabled = false, theme, tone = "theme", onClick, children }: { selected: boolean; disabled?: boolean; theme: CanvasTheme; tone?: "theme" | "plain"; onClick: () => void; children: ReactNode }) {
     return (
-        <button type="button" disabled={disabled} className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-35" style={{ background: "transparent", borderColor: selected ? theme.node.text : theme.node.stroke, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onClick={onClick}>
+        <button type="button" disabled={disabled} className={tone === "plain" ? `flex h-8 w-full cursor-pointer items-center justify-center rounded-full px-1 text-[13px] leading-5 transition disabled:cursor-not-allowed disabled:opacity-35 ${selected ? "bg-[#111827] font-medium !text-white dark:bg-white dark:!text-[#111827]" : "bg-[#F3F4F6] text-[#111827] hover:bg-[#E5E7EB] dark:bg-stone-800 dark:text-stone-100"}` : "h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-35"} style={tone === "plain" ? (selected ? { color: "#fff", WebkitTextFillColor: "#fff" } : undefined) : { background: "transparent", borderColor: selected ? theme.node.text : theme.node.stroke, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onClick={onClick}>
             {children}
         </button>
     );
 }
 
-function SettingGroup({ title, color, children }: { title: string; color: string; children: ReactNode }) {
+function SettingGroup({ title, color, plain = false, children }: { title: string; color: string; plain?: boolean; children: ReactNode }) {
     return (
-        <div className="space-y-2.5">
-            <div className="text-xs font-medium" style={{ color }}>
+        <div className={plain ? "space-y-2" : "space-y-2.5"}>
+            <div className={plain ? "text-[13px] font-medium leading-5" : "text-xs font-medium"} style={{ color }}>
                 {title}
             </div>
             {children}
@@ -162,18 +166,18 @@ function SettingGroup({ title, color, children }: { title: string; color: string
     );
 }
 
-function ResolutionInput({ value, theme, onChange }: { value: string; theme: CanvasTheme; onChange: (value: string) => void }) {
+function ResolutionInput({ value, theme, tone = "theme", onChange }: { value: string; theme: CanvasTheme; tone?: "theme" | "plain"; onChange: (value: string) => void }) {
     return (
-        <label className="flex h-9 overflow-hidden rounded-full border text-sm" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
+        <label className={tone === "plain" ? "flex h-8 w-full overflow-hidden rounded-full border border-[#E6E8EE] bg-white text-[13px] leading-5 text-[#111827] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100" : "flex h-9 overflow-hidden rounded-full border text-sm"} style={tone === "plain" ? undefined : { borderColor: theme.node.stroke, color: theme.node.text }}>
             <input type="number" min={1} className="min-w-0 flex-1 bg-transparent px-3 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={value} onChange={(event) => onChange(event.target.value)} onMouseDown={(event) => event.stopPropagation()} />
-            <span className="grid w-7 place-items-center pr-1" style={{ color: theme.node.muted }}>
+            <span className="grid w-7 place-items-center pr-1" style={{ color: tone === "plain" ? "#6B7280" : theme.node.muted }}>
                 p
             </span>
         </label>
     );
 }
 
-function SecondsInput({ value, theme, onCommit }: { value: number; theme: CanvasTheme; onCommit: (value: number) => void }) {
+function SecondsInput({ value, theme, tone = "theme", onCommit }: { value: number; theme: CanvasTheme; tone?: "theme" | "plain"; onCommit: (value: number) => void }) {
     const commit = (input: HTMLInputElement) => {
         const next = Number(clampVideoSeconds(input.value));
         input.value = String(next);
@@ -181,7 +185,7 @@ function SecondsInput({ value, theme, onCommit }: { value: number; theme: Canvas
     };
 
     return (
-        <label className="flex h-9 w-[68px] shrink-0 overflow-hidden rounded-xl text-sm" style={{ background: theme.node.fill, color: theme.node.text }}>
+        <label className={tone === "plain" ? "flex h-8 w-16 shrink-0 overflow-hidden rounded-full border border-[#E6E8EE] bg-white text-[13px] leading-5 text-[#111827] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100" : "flex h-9 w-[68px] shrink-0 overflow-hidden rounded-xl text-sm"} style={tone === "plain" ? undefined : { background: theme.node.fill, color: theme.node.text }}>
             <input
                 type="number"
                 min={VIDEO_SECONDS_MIN}
@@ -199,10 +203,10 @@ function SecondsInput({ value, theme, onCommit }: { value: number; theme: Canvas
     );
 }
 
-function DimensionInput({ prefix, value, disabled, theme, onChange }: { prefix: string; value: number; disabled: boolean; theme: CanvasTheme; onChange: (value: number | null) => void }) {
+function DimensionInput({ prefix, value, disabled, theme, tone = "theme", onChange }: { prefix: string; value: number; disabled: boolean; theme: CanvasTheme; tone?: "theme" | "plain"; onChange: (value: number | null) => void }) {
     return (
-        <label className="flex h-9 overflow-hidden rounded-xl text-sm" style={{ background: theme.node.fill, color: theme.node.text, opacity: disabled ? 0.55 : 1 }}>
-            <span className="grid w-9 place-items-center" style={{ color: theme.node.muted }}>
+        <label className={tone === "plain" ? "flex h-9 overflow-hidden rounded-full border border-[#E6E8EE] bg-white text-[13px] leading-5 text-[#111827] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100" : "flex h-9 overflow-hidden rounded-xl text-sm"} style={tone === "plain" ? { opacity: disabled ? 0.55 : 1 } : { background: theme.node.fill, color: theme.node.text, opacity: disabled ? 0.55 : 1 }}>
+            <span className="grid w-9 place-items-center" style={{ color: tone === "plain" ? "#6B7280" : theme.node.muted }}>
                 {prefix}
             </span>
             <input type="number" min={1} disabled={disabled} className="min-w-0 flex-1 bg-transparent px-2 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={value || ""} onChange={(event) => onChange(Number(event.target.value) || null)} onMouseDown={(event) => event.stopPropagation()} />
@@ -210,10 +214,10 @@ function DimensionInput({ prefix, value, disabled, theme, onChange }: { prefix: 
     );
 }
 
-function SizePreview({ width, height, color }: { width: number; height: number; color: string }) {
-    if (!width || !height) return null;
-    const longSide = Math.max(width, height);
-    const previewWidth = Math.max(10, Math.round((width / longSide) * 26));
-    const previewHeight = Math.max(10, Math.round((height / longSide) * 26));
-    return <span className="rounded-[3px] border-2" style={{ width: previewWidth, height: previewHeight, borderColor: color }} />;
+function SizePreview({ width, height, color, compact = false }: { width: number; height: number; color: string; compact?: boolean }) {
+    const ratio = width && height ? width / height : 1;
+    const max = compact ? 12 : 26;
+    const previewWidth = width && height ? (ratio >= 1 ? max : Math.max(compact ? 5 : 10, Math.round(max * ratio))) : (compact ? 10 : 18);
+    const previewHeight = width && height ? (ratio >= 1 ? Math.max(compact ? 5 : 10, Math.round(max / ratio)) : max) : (compact ? 10 : 18);
+    return <span className={compact ? "grid size-3.5 shrink-0 place-items-center" : "grid h-6 place-items-center"}><span className="rounded-[2px]" style={{ width: previewWidth, height: previewHeight, borderWidth: compact ? 1.5 : 2, borderStyle: width && height ? "solid" : "dashed", borderColor: color }} /></span>;
 }

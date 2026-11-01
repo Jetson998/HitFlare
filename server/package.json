@@ -6,16 +6,20 @@
     "node": ">=24"
   },
   "scripts": {
+    "start:serviceization-lab": "node serviceization-lab.mjs",
     "test:agent": "node --test agent/*.test.mjs",
     "test:reverse-prompt": "node --test reverse-prompt/*.test.mjs"
   },
   "dependencies": {
+    "busboy": "^1.6.0",
     "eventsource-parser": "^4.1.1",
     "file-type": "^21.0.0",
     "image-size": "^2.0.4",
     "ipaddr.js": "^2.5.0",
+    "music-metadata": "^12.1.1",
     "openai": "^6.0.0",
     "partial-json": "^0.1.7",
+    "sharp": "^0.35.5",
     "undici": "^8.11.2",
     "zod": "^4.0.0"
   }

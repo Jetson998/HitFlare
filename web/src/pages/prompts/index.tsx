@@ -1,46 +1,121 @@
-import { ChevronDown, FolderPlus, Search } from "lucide-react";
-import { type ReactNode, type UIEvent, useEffect, useState } from "react";
-import { App, Button, Empty, Input, Spin, Tag } from "antd";
+import { ArrowLeft, ArrowRight, FolderPlus, Search } from "lucide-react";
+import { type ReactNode, type UIEvent, useEffect, useRef, useState } from "react";
+import { App, Button, Empty, Input, Spin } from "antd";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { PromptCard } from "@/components/prompts/prompt-card";
 import { usePromptList } from "@/components/prompts/use-prompt-list";
 import { PromptDetailDialog } from "@/components/prompts/prompt-detail-dialog";
 import { useCopyText } from "@/hooks/use-copy-text";
-import { cn } from "@/lib/utils";
 import { useAssetStore } from "@/stores/use-asset-store";
-import { ALL_PROMPTS_OPTION, type Prompt } from "@/services/api/prompts";
+import { useUserStore } from "@/stores/use-user-store";
+import { ALL_PROMPTS_OPTION, fetchPromptSections, type Prompt, type PromptSection } from "@/services/api/prompts";
+
+const coverCache = new Map<string, boolean>();
+const coverLoading = new Set<string>();
+const coverListeners = new Set<() => void>();
+
+function publishCover(url: string, ok: boolean) {
+    if (coverCache.get(url) === ok) return;
+    coverCache.set(url, ok);
+    coverListeners.forEach((listener) => listener());
+}
+
+function ensureCovers(items: Prompt[]) {
+    for (const item of items) {
+        const url = item.coverUrl;
+        if (!url || coverCache.has(url) || coverLoading.has(url)) continue;
+        coverLoading.add(url);
+        const image = new Image();
+        const finish = (ok: boolean) => { window.clearTimeout(timer); coverLoading.delete(url); publishCover(url, ok); };
+        const timer = window.setTimeout(() => finish(false), 8000);
+        image.onload = () => finish(true);
+        image.onerror = () => finish(false);
+        image.src = url;
+    }
+}
+
+function useCoverResults() {
+    const [version, setVersion] = useState(0);
+    useEffect(() => {
+        const listener = () => setVersion((value) => value + 1);
+        coverListeners.add(listener);
+        return () => { coverListeners.delete(listener); };
+    }, []);
+    return version;
+}
+
+function usablePrompts(items: Prompt[]) {
+    return items.filter((item) => item.coverUrl && coverCache.get(item.coverUrl) === true);
+}
+
+function coversPending(items: Prompt[]) {
+    return items.some((item) => item.coverUrl && !coverCache.has(item.coverUrl));
+}
 
 export default function PromptsPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const [titleKeyword, setTitleKeyword] = useState("");
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [debouncedKeyword, setDebouncedKeyword] = useState("");
     const [selectedCategory, setSelectedCategory] = useState(ALL_PROMPTS_OPTION);
-    const [tagsOpen, setTagsOpen] = useState(false);
     const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+    const identity = useUserStore((state) => state.user?.sessionId);
     const addAsset = useAssetStore((state) => state.addAsset);
     const copyText = useCopyText();
-    const { query, items: promptItems, tags: promptTags, categories: promptCategories, total: totalPrompts } = usePromptList({ keyword: titleKeyword, tags: selectedTags, category: selectedCategory });
-    const selectedConditions = [
-        selectedCategory !== ALL_PROMPTS_OPTION ? selectedCategory : "",
-        ...selectedTags,
-        titleKeyword.trim(),
-    ].filter(Boolean).join(" · ");
+    const coverVersion = useCoverResults();
+    const inCategory = selectedCategory !== ALL_PROMPTS_OPTION;
+    const { query, items: promptItems, total: totalPrompts } = usePromptList({ keyword: titleKeyword, tags: [], category: selectedCategory, enabled: inCategory });
+    const sectionsQuery = useQuery({
+        queryKey: ["prompt-sections", identity, debouncedKeyword],
+        queryFn: () => fetchPromptSections(debouncedKeyword),
+        enabled: Boolean(identity),
+    });
 
     useEffect(() => {
-        if (query.isError) message.error(query.error instanceof Error ? query.error.message : t("prompts.loadFailed"));
-    }, [message, query.error, query.isError, t]);
+        const timer = setTimeout(() => setDebouncedKeyword(titleKeyword), 300);
+        return () => clearTimeout(timer);
+    }, [titleKeyword]);
 
-    const savePromptAsset = (item: Prompt) => {
-        addAsset({ kind: "text", title: item.title, coverUrl: item.coverUrl, tags: item.tags, source: item.category, data: { content: item.prompt }, metadata: { source: "prompt-library", promptId: item.id, githubUrl: item.githubUrl } });
-        message.success(t("common.addedToAssets"));
+    useEffect(() => {
+        const error = inCategory ? query.error : sectionsQuery.error;
+        const failed = inCategory ? query.isError : sectionsQuery.isError;
+        if (failed) message.error(error instanceof Error ? error.message : t("prompts.loadFailed"));
+    }, [inCategory, message, query.error, query.isError, sectionsQuery.error, sectionsQuery.isError, t]);
+
+    const sections = sectionsQuery.data?.sections || [];
+    useEffect(() => { ensureCovers(inCategory ? promptItems : sections.flatMap((section) => section.items)); }, [inCategory, promptItems, sections]);
+    useEffect(() => {
+        if (!inCategory || query.isFetchingNextPage || !query.hasNextPage || coversPending(promptItems)) return;
+        if (usablePrompts(promptItems).length >= 8) return;
+        void query.fetchNextPage();
+    }, [coverVersion, inCategory, promptItems, query.hasNextPage, query.isFetchingNextPage, query.fetchNextPage]);
+
+    const savePromptAsset = async (item: Prompt) => {
+        try {
+            await addAsset({ kind: "text", title: item.title, coverUrl: item.coverUrl, tags: item.tags, source: item.category, data: { content: item.prompt }, metadata: { source: "prompt-library", promptId: item.id, githubUrl: item.githubUrl } });
+            message.success(t("common.addedToAssets"));
+        } catch (error) { message.error(error instanceof Error ? error.message : "资产保存失败，请稍后重试"); }
     };
 
-    const handleListScroll = (event: UIEvent<HTMLDivElement>) => {
+    const handleListScroll = (event: UIEvent<HTMLElement>) => {
+        if (!inCategory) return;
         const target = event.currentTarget;
         if (query.hasNextPage && !query.isFetchingNextPage && target.scrollTop + target.clientHeight >= target.scrollHeight - 160) void query.fetchNextPage();
     };
+
+    const openCategory = (category: string) => setSelectedCategory(category);
+
+    const categoryLabel = (category: string) => category || t("prompts.other");
+    const card = (item: Prompt) => (
+        <PromptCard item={item} onOpen={() => setSelectedPrompt(item)} onCopy={() => copyText(item.prompt, t("common.promptCopied"))} extraAction={<Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => savePromptAsset(item)}>{t("common.addToAssets")}</Button>} />
+    );
+    const visibleCategoryItems = usablePrompts(promptItems);
+    const categoryPending = coversPending(promptItems);
+    const overviewPending = sections.some((section) => coversPending(section.items));
+    const overviewHasCards = sections.some((section) => usablePrompts(section.items).length > 0);
+    const visibleTotal = inCategory ? totalPrompts : sectionsQuery.data?.total || 0;
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-background text-stone-800 dark:text-stone-100">
@@ -48,65 +123,70 @@ export default function PromptsPage() {
                 <div className="workspace-page">
                     <header className="workspace-heading workspace-heading-with-search">
                         <div className="workspace-heading-copy min-w-0">
-                            <h1 className="workspace-title">{t("prompts.title")}</h1>
-                            <p className="workspace-description">{t("prompts.total", { count: totalPrompts })}</p>
+                            <h1 className="workspace-title min-w-0 truncate">{t("prompts.title")}</h1>
+                            <p className="workspace-description">{t("prompts.total", { count: visibleTotal })}</p>
                         </div>
                         <div className="workspace-search-row">
                             <Input className="workspace-search shrink-0" allowClear aria-label={t("prompts.search")} prefix={<Search className="size-4 text-stone-400" />} value={titleKeyword} placeholder={t("prompts.search")} onChange={(event) => setTitleKeyword(event.target.value)} />
                         </div>
                     </header>
-                    <div className="workspace-filter-stack">
-                        <div className="workspace-filter-bar prompts-filter-bar" aria-label={`${t("prompts.category")} ${t("prompts.tags")}`}>
-                            <div className="prompts-category-row flex min-w-0 items-start gap-4">
-                                <div className="w-14 shrink-0 pt-1 text-xs font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">{t("prompts.category")}</div>
-                                <div className="flex min-w-0 flex-wrap gap-1.5">
-                                    {promptCategories.map((category) => (
-                                        <Tag.CheckableTag key={category} checked={selectedCategory === category} className={cn("prompt-filter-tag", category === ALL_PROMPTS_OPTION ? "prompt-filter-tag-all" : selectedCategory === category && "is-active")} onChange={() => { setSelectedCategory(category); setSelectedTags([]); }}>
-                                            {category === ALL_PROMPTS_OPTION ? t("common.all") : category}
-                                        </Tag.CheckableTag>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="prompts-tags-row flex min-w-0 items-start gap-4">
-                                <div className="w-14 shrink-0 pt-1 text-xs font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">{t("prompts.tags")}</div>
-                                <div className="prompt-tag-filter-row min-w-0 flex-1">
-                                    <div id="inspiration-tags" className={cn("thin-scrollbar min-w-0 flex-1 pr-1", tagsOpen ? "max-h-[min(42dvh,520px)] overflow-y-auto" : "max-h-[102px] overflow-hidden")}>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {promptTags.map((tag) => {
-                                                const active = tag === ALL_PROMPTS_OPTION ? selectedTags.length === 0 : selectedTags.includes(tag);
-                                                return <Tag.CheckableTag key={tag} checked={active} className={cn("prompt-filter-tag", tag === ALL_PROMPTS_OPTION ? "prompt-filter-tag-all" : active && "is-active")} onChange={() => tag === ALL_PROMPTS_OPTION ? setSelectedTags([]) : setSelectedTags((items) => items.includes(tag) ? items.filter((item) => item !== tag) : [...items, tag])}>{tag === ALL_PROMPTS_OPTION ? t("common.all") : tag}</Tag.CheckableTag>;
-                                            })}
-                                        </div>
-                                    </div>
-                                    <button type="button" className="prompt-tag-toggle shrink-0" aria-expanded={tagsOpen} aria-controls="inspiration-tags" onClick={() => setTagsOpen((open) => !open)}>
-                                        <span>{t(tagsOpen ? "prompts.collapseTags" : "prompts.expandTags")}{selectedTags.length ? ` · ${selectedTags.length}` : ""}</span>
-                                        <ChevronDown className={cn("size-3 transition-transform", tagsOpen && "rotate-180")} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="min-w-0">
-                        <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
-                            {selectedConditions ? <div className="flex min-w-0 items-center gap-2 text-[13px] text-stone-500 dark:text-stone-400">
-                                <span className="min-w-0 truncate" title={selectedConditions}>{t("prompts.selected")}：{selectedConditions}</span>
-                                <Button type="text" size="small" onClick={() => { setSelectedCategory(ALL_PROMPTS_OPTION); setSelectedTags([]); setTitleKeyword(""); }}>{t("common.clear")}</Button>
-                            </div> : <span />}
-                        </div>
+                    {inCategory ? (
                         <section className="min-w-0">
-                            {query.isLoading ? <div className="flex h-60 items-center justify-center"><Spin /></div> : null}
-                            {!query.isLoading ? <PromptGrid items={promptItems} onOpen={setSelectedPrompt} renderActions={(item) => <Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => savePromptAsset(item)}>{t("common.addToAssets")}</Button>} onCopy={(item) => copyText(item.prompt, t("common.promptCopied"))} emptyText={t("prompts.empty")} /> : null}
-                            <div className="mt-6 text-center text-xs text-stone-500 dark:text-stone-400">{query.isFetchingNextPage ? t("prompts.loading") : query.hasNextPage ? t("prompts.loadMore") : promptItems.length > 0 ? t("prompts.end") : null}</div>
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <h2 className="m-0 min-w-0 truncate text-[15px] font-medium leading-6 text-stone-900 dark:text-stone-100">{categoryLabel(selectedCategory)}</h2>
+                                <button type="button" className="inline-flex shrink-0 items-center gap-1 text-[13px] leading-5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" onClick={() => openCategory(ALL_PROMPTS_OPTION)}><ArrowLeft className="size-3.5" />{t("prompts.backToCategories")}</button>
+                            </div>
+                            {query.isLoading || (categoryPending && visibleCategoryItems.length === 0) ? <div className="flex h-60 items-center justify-center"><Spin /></div> : <PromptGrid items={visibleCategoryItems} renderCard={card} emptyText={t("prompts.empty")} />}
+                            <div className="mt-6 text-center text-xs text-stone-500 dark:text-stone-400">{query.isFetchingNextPage ? t("prompts.loading") : query.hasNextPage ? t("prompts.loadMore") : visibleCategoryItems.length > 0 ? t("prompts.end") : null}</div>
                         </section>
-                    </div>
+                    ) : sectionsQuery.isLoading ? <div className="flex h-60 items-center justify-center"><Spin /></div> : !overviewPending && !overviewHasCards ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("prompts.empty")} className="py-16" /> : (
+                        <div className="space-y-8">
+                            {sections.map((section) => <CategorySection key={section.name || "other"} section={section} label={categoryLabel(section.name)} onOpen={() => openCategory(section.name)} viewAllLabel={t("prompts.viewAll")} renderCard={card} coverVersion={coverVersion} />)}
+                        </div>
+                    )}
                 </div>
             </main>
-
             <PromptDetailDialog prompt={selectedPrompt} onClose={() => setSelectedPrompt(null)} onCopy={(prompt) => copyText(prompt, t("common.promptCopied"))} onSaveAsset={savePromptAsset} />
         </div>
     );
 }
 
-function PromptGrid({ items, onOpen, onCopy, renderActions, emptyText }: { items: Prompt[]; onOpen: (item: Prompt) => void; onCopy: (item: Prompt) => void; renderActions: (item: Prompt) => ReactNode; emptyText: string }) {
-    return <div><div className="workspace-grid">{items.map((item) => <PromptCard key={`${item.sourceId}:${item.id}`} item={item} onOpen={() => onOpen(item)} onCopy={() => onCopy(item)} extraAction={renderActions(item)} />)}</div>{items.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} className="py-16" /> : null}</div>;
+function CategorySection({ section, label, onOpen, viewAllLabel, renderCard, coverVersion }: { section: PromptSection; label: string; onOpen: () => void; viewAllLabel: string; renderCard: (item: Prompt) => ReactNode; coverVersion: number }) {
+    const shown = usablePrompts(section.items);
+    const pending = coversPending(section.items);
+    void coverVersion;
+    if (!pending && shown.length === 0 && section.items.length >= section.total) return null;
+    return (
+        <section aria-label={label}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="m-0 min-w-0 truncate text-[15px] font-medium leading-6 text-stone-900 dark:text-stone-100">{label}<span className="ml-2 text-[13px] font-normal text-stone-400">· {section.total}</span></h2>
+                <button type="button" className="inline-flex shrink-0 items-center gap-1 text-[13px] leading-5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" onClick={onOpen}>
+                    {viewAllLabel}
+                    <ArrowRight className="size-3.5" />
+                </button>
+            </div>
+            {shown.length === 0 ? pending ? <div className="flex h-24 items-center justify-center"><Spin /></div> : null : <TwoRowCards items={section.items} renderCard={renderCard} coverVersion={coverVersion} />}
+        </section>
+    );
+}
+
+function TwoRowCards({ items, renderCard, coverVersion }: { items: Prompt[]; renderCard: (item: Prompt) => ReactNode; coverVersion: number }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [columns, setColumns] = useState(4);
+    useEffect(() => {
+        const node = ref.current;
+        if (!node) return;
+        const update = () => setColumns(Math.max(1, Math.floor((node.clientWidth + 16) / 256)));
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+    void coverVersion;
+    const shown = usablePrompts(items).slice(0, columns * 2);
+    return <div ref={ref} className="workspace-grid">{shown.map((item) => <div key={`${item.sourceId}:${item.id}`}>{renderCard(item)}</div>)}</div>;
+}
+
+function PromptGrid({ items, renderCard, emptyText }: { items: Prompt[]; renderCard: (item: Prompt) => ReactNode; emptyText: string }) {
+    return <div><div className="workspace-grid">{items.map((item) => <div key={`${item.sourceId}:${item.id}`}>{renderCard(item)}</div>)}</div>{items.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} className="py-16" /> : null}</div>;
 }

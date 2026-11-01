@@ -1,3 +1,4 @@
+import {testKeyring,testChannel} from "../serviceization-fixtures.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -10,6 +11,7 @@ import { createApp } from "../index.mjs";
 import { createAgentStore } from "./store.mjs";
 import { createAgentModel, modelErrorMessage, AGENT_TIMEOUT_MS } from "./model.mjs";
 import { planSchema } from "./schema.mjs";
+import { restoreMigrationBackup } from "../storage-safety.mjs";
 
 const listen = server => new Promise(resolve => server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${server.address().port}`)));
 const stop = server => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); });
@@ -21,14 +23,16 @@ test("server history, ownership, assets, revisions, idempotency and cancellation
     const oldEnv = { ...process.env };
     Object.assign(process.env, { HITFLARE_ADMIN_EMAIL: "agent-test@example.test", HITFLARE_ADMIN_USERNAME: "Agent Test", HITFLARE_ADMIN_PASSWORD: randomUUID() });
     const pending = [];
-    const agent = { baseUrl: "https://provider.test/v1", apiKey: "request-only-test-key", apiFormat: "openai", model: "test-model" };
+    const agent = {channelId:"test-channel",model:"test-model"};
     const model = { configured: true, model: "test-model", generate: (context, read, signal) => new Promise((resolve, reject) => {
         pending.push({ context, read, resolve }); signal.addEventListener("abort", () => reject(signal.reason), { once: true });
     }) };
-    const server = await createApp({ dataDir: dir, agentModel: model }); const url = await listen(server);
+    const server = await createApp({ keyring:testKeyring, dataDir: dir, agentModel: model }); const url = await listen(server);
     t.after(async () => { await stop(server); await settle(); process.env = oldEnv; await rm(dir, { recursive: true, force: true }); });
     const login = await fetch(`${url}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: process.env.HITFLARE_ADMIN_EMAIL, password: process.env.HITFLARE_ADMIN_PASSWORD }) });
     const userA = (await login.json()).user; const cookieA = login.headers.get("set-cookie").split(";")[0];
+    const savedChannel=await fetch(`${url}/api/workspace/channels`,{method:"POST",headers:{cookie:cookieA,"content-type":"application/json"},body:JSON.stringify({...testChannel,models:[{name:"test-model",capability:"text"}]})});
+    assert.equal(savedChannel.status,200);
     const passwordB = randomUUID();
     const created = await fetch(`${url}/api/admin/users`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ email: "agent-b@example.test", username: "B", password: passwordB }) });
     const userB = (await created.json()).user;
@@ -66,13 +70,14 @@ test("server history, ownership, assets, revisions, idempotency and cancellation
     assert.equal(JSON.stringify(pending[1].context).includes("A1"), false);
     assert.deepEqual(pending[0].read(ref.id).bytes, png);
     const plan = { type: "creative_plan", goal: "夏日海报", prompt: "保持包装，清爽自然光", references: [{ id: ref.id, title: ref.title }] };
-    pending[0].resolve(plan); pending[1].resolve({ type: "message", message: "A2 回复" }); await settle();
+    const explained = { ...plan, note: "先做成包装居中的清爽海报，背景留白。" };
+    pending[0].resolve(explained); pending[1].resolve({ type: "message", message: "A2 回复" }); await settle();
     const done = (await api(`threads/${a1.id}`)).body.thread; const card = done.messages.find(m => m.role === "assistant");
     assert.equal(done.runs[0].status, "succeeded"); assert.equal(card.threadId, a1.id); assert.equal(card.turnId, done.runs[0].turnId); assert.equal(card.itemId, done.runs[0].itemId);
     assert.equal(JSON.stringify(done).includes("request-only-test-key"), false);
     assert.equal("context" in done.runs[0], false);
     const edit = await api(`threads/${a1.id}/plans/${card.itemId}`, "PUT", { version: card.version, plan: { ...plan, prompt: "用户调整为海边背景" } });
-    assert.equal(edit.status, 200); assert.equal((await api(`threads/${a1.id}/plans/${card.itemId}/handoff`, "POST", { version: 1 })).status, 409);
+    assert.equal(edit.status, 200); assert.equal(edit.body.thread.messages.find(m => m.itemId === card.itemId).content.note, explained.note); assert.equal((await api(`threads/${a1.id}/plans/${card.itemId}/handoff`, "POST", { version: 1 })).status, 409);
     const handoff = (await api(`threads/${a1.id}/plans/${card.itemId}/handoff`, "POST", { version: 2 })).body;
     assert.equal(handoff.prompt, "用户调整为海边背景"); for (const field of ["model", "size", "quality", "count", "run"]) assert.equal(field in handoff, false);
     await api(`threads/${a1.id}/turns`, "POST", { requestId: randomUUID(), draftVersion: 2, message: "继续优化", referenceIds: [] });
@@ -99,7 +104,7 @@ test("server history, ownership, assets, revisions, idempotency and cancellation
     assert.equal(optimizedHandoff.prompt, editedPlan.prompt);
     assert.equal("originalPrompt" in optimizedHandoff, false); assert.equal("mode" in optimizedHandoff, false);
     assert.equal((await api(`threads/${a1.id}/plans/${card.itemId}/restore`, "POST", { version: 2 })).status, 200);
-    assert.deepEqual((await api(`threads/${a1.id}`)).body.thread.messages.find(m => m.itemId === card.itemId).content, plan);
+    assert.deepEqual((await api(`threads/${a1.id}`)).body.thread.messages.find(m => m.itemId === card.itemId).content, explained);
 });
 
 test("restart preserves content, marks interrupted calls, refuses unknown storage", async () => {
@@ -115,6 +120,28 @@ test("restart preserves content, marks interrupted calls, refuses unknown storag
     await assert.rejects(createAgentStore(dir), /version is unknown/); await rm(dir, { recursive: true, force: true });
 });
 
+test("known v1 agent schema migrates with identity and checksum-verified backup", async t => {
+    const dir = await mkdtemp(join(tmpdir(), "hitflare-agent-migrate-v1-"));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    const store = await createAgentStore(dir);
+    const thread = store.create("bill");
+    store.update("bill", thread.id, state => { state.draft.message = "保留的旧草稿"; });
+    store.close();
+    const db = new DatabaseSync(join(dir, "hitflare-agent.sqlite"));
+    db.exec("ALTER TABLE threads DROP COLUMN tenant_id; ALTER TABLE assets DROP COLUMN tenant_id; ALTER TABLE preferences DROP COLUMN tenant_id; PRAGMA user_version=1;");
+    db.close();
+    const migrated = await createAgentStore(dir);
+    assert.equal(migrated.get("bill", thread.id).draft.message, "保留的旧草稿");
+    const upgraded = new DatabaseSync(join(dir, "hitflare-agent.sqlite"), { readOnly: true });
+    assert.equal(upgraded.prepare("PRAGMA user_version").get().user_version, 2);
+    assert.equal(upgraded.prepare("SELECT tenant_id FROM threads WHERE id=?").get(thread.id).tenant_id, "default");
+    upgraded.close();
+    const backup = await restoreMigrationBackup(join(dir, "schema-backups", "hitflare-agent.sqlite-v1-to-v2"), join(dir, "restored"));
+    const original = new DatabaseSync(backup, { readOnly: true });
+    assert.equal(original.prepare("PRAGMA user_version").get().user_version, 1); original.close();
+    migrated.close();
+});
+
 test("real SDK transport validates JSON, rejects invented refs and parameter fields, never retries", async t => {
     let result = { type: "message", message: "想突出怎样的产品感受？" }; let count = 0; let status = 200; let seen; const paths = [];
     const server = createServer(async (req, res) => {
@@ -123,21 +150,30 @@ test("real SDK transport validates JSON, rejects invented refs and parameter fie
         res.end(JSON.stringify(status === 200 ? { choices: [{ finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(result) } }] } : { error: { message: "test failure" } }));
     });
     const url = await listen(server); t.after(() => stop(server));
-    const model = createAgentModel({ AGENT_BASE_URL: url, AGENT_API_KEY: "test-only" });
+    const mockFetch=(endpoint,options)=>fetch(url+new URL(endpoint).pathname,options);
+    const model = createAgentModel({ AGENT_BASE_URL: "https://provider.example", AGENT_API_KEY: "test-only" },mockFetch);
+    t.after(()=>model.close());
     const context = [{ role: "user", content: { type: "message", message: "创作一张海报" }, references: [] }];
     for (const suffix of ["", "/", "/v1", "/v1/", "/v1///"]) {
-        const channel = createAgentModel({ AGENT_BASE_URL: url + suffix, AGENT_API_KEY: "test-only", AGENT_MODEL: "selected-text-model" });
+        const channel = createAgentModel({ AGENT_BASE_URL: "https://provider.example" + suffix, AGENT_API_KEY: "test-only", AGENT_MODEL: "selected-text-model" },mockFetch);
+        t.after(()=>channel.close());
         await channel.generate(context, () => {}, undefined);
         assert.equal(paths.at(-1), "/v1/chat/completions"); assert.equal(seen.model, "selected-text-model");
     }
     assert.equal((await model.generate(context, () => {}, undefined)).type, "message"); assert.equal(seen.model, "gpt-5.6-sol"); assert.equal(AGENT_TIMEOUT_MS, 180000);
     assert.equal("tools" in seen, false); assert.equal("temperature" in seen, false);
-    result = { type: "creative_plan", goal: "海报", prompt: "海报提示词", references: [{ id: randomUUID(), title: "虚构素材" }] };
+    result = { type: "creative_plan", goal: "海报", prompt: "海报提示词", note: "先出一张海报。", references: [{ id: randomUUID(), title: "虚构素材" }] };
     await assert.rejects(model.generate(context, () => {}, undefined), /invalid_output/);
     result = { type: "creative_plan", goal: "海报", prompt: "海报提示词", references: [], quality: "2k" };
     assert.equal(planSchema.safeParse(result).success, false); await assert.rejects(model.generate(context, () => {}, undefined), /invalid_output/);
+    result = { type: "creative_plan", goal: "海报", prompt: "海报提示词", references: [] };
+    await assert.rejects(model.generate(context, () => {}, undefined), /invalid_output/);
+    result = { ...result, note: "先出一张包装居中的清爽海报，背景留白。" };
+    assert.equal((await model.generate(context, () => {}, undefined)).note, result.note);
+    result = { ...result, prompt: "本次场景变化：将泳池场景替换为开阔沙漠，移除池水。" };
+    await assert.rejects(model.generate(context, () => {}, undefined), /invalid_output/);
     const optimizationContext = [{ role: "user", content: { type: "message", message: "请优化提示词：产品居中，清爽自然光。" }, references: [] }];
-    result = { type: "creative_plan", goal: "优化海报提示词", prompt: "**主体**\n\n- 突出产品\n\n**光影**\n\n- 清爽自然光", references: [], mode: "optimize_prompt", originalPrompt: "产品居中，清爽自然光。" };
+    result = { type: "creative_plan", goal: "优化海报提示词", prompt: "**主体**\n\n- 突出产品\n\n**光影**\n\n- 清爽自然光", note: "把主体改成产品居中，并明确清爽自然光。", references: [], mode: "optimize_prompt", originalPrompt: "产品居中，清爽自然光。" };
     assert.deepEqual(await model.generate(optimizationContext, () => {}, undefined), result);
     await assert.rejects(model.generate(context, () => {}, undefined), /invalid_output/);
     result.mode = "create"; await assert.rejects(model.generate(optimizationContext, () => {}, undefined), /invalid_output/);

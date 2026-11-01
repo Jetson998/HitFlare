@@ -1,14 +1,17 @@
 import { saveAs } from "file-saver";
 
 import i18n from "@/i18n";
+import { canvasDocument } from "@/services/api/canvases";
 import { createZip } from "@/lib/zip";
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob } from "@/services/image-storage";
+import { sessionIdentity, assertWorkspaceSession } from "@/services/api/workspace";
 import type { CanvasExportAsset, CanvasExportFile } from "@/types/canvas-export";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
 export async function exportCanvasProjects(projects: CanvasProject[], fileName = i18n.t("canvas.export.defaultProjectName")) {
+    const identity=sessionIdentity();
     const zipFiles: { name: string; data: BlobPart }[] = [];
     const exportedProjects = await Promise.all(
         projects.map(async (project) => {
@@ -22,16 +25,18 @@ export async function exportCanvasProjects(projects: CanvasProject[], fileName =
                     zipFiles.push({ name: path, data: blob });
                 }),
             );
-            return { project, files };
+            return { project: { ...project, ...canvasDocument(project) }, files };
         }),
     );
 
     const data: CanvasExportFile = { app: "infinite-canvas", version: 3, exportedAt: new Date().toISOString(), projects: exportedProjects };
     const zip = await createZip([{ name: "projects.json", data: JSON.stringify(data, null, 2) }, ...zipFiles]);
+    assertWorkspaceSession(identity);
     saveAs(zip, `${safeFileName(fileName)}.zip`);
 }
 
 export async function exportCanvasNodes(nodes: CanvasNodeData[], fileName = i18n.t("canvas.export.defaultNodesName")) {
+    const identity=sessionIdentity();
     const zipFiles: { name: string; data: BlobPart }[] = [];
     const used = new Set<string>();
     const uniqueName = (base: string, ext: string) => {
@@ -61,13 +66,20 @@ export async function exportCanvasNodes(nodes: CanvasNodeData[], fileName = i18n
     );
 
     const zip = await createZip(zipFiles);
+    assertWorkspaceSession(identity);
     saveAs(zip, `${safeFileName(fileName)}.zip`);
 }
 
-function collectStorageKeys(value: unknown, keys = new Set<string>()) {
+function collectStorageKeys(value: unknown, keys = new Set<string>(), field = "") {
+    if (typeof value === "string") {
+        const mediaId = value.match(/^\/api\/workspace\/media\/([^/]+)\/content$/)?.[1];
+        if (mediaId) keys.add(mediaId);
+        if (["storageKey", "mediaId", "objectId", "references"].includes(field) && /^[a-f0-9-]{36}$/i.test(value)) keys.add(value);
+        return [...keys];
+    }
     if (!value || typeof value !== "object") return [...keys];
-    if ("storageKey" in value && typeof value.storageKey === "string" && value.storageKey.includes(":")) keys.add(value.storageKey);
-    Object.values(value).forEach((item) => (Array.isArray(item) ? item.forEach((child) => collectStorageKeys(child, keys)) : collectStorageKeys(item, keys)));
+    if ("storageKey" in value && typeof value.storageKey === "string" && Boolean(value.storageKey)) keys.add(value.storageKey);
+    Object.entries(value).forEach(([key, item]) => Array.isArray(item) ? item.forEach(child => collectStorageKeys(child, keys, key)) : collectStorageKeys(item, keys, key));
     return [...keys];
 }
 

@@ -1,17 +1,32 @@
-import { randomUUID } from "node:crypto";
+import {readImageForm} from "../media-upload.mjs";
+import { createHash, randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { Readable } from "node:stream";
 import { fileTypeFromBuffer } from "file-type";
 import { InputError } from "../catalog.mjs";
-import { sameOrigin } from "../auth.mjs";
+import { requireAuthenticated, sameOrigin } from "../auth.mjs";
 import { createAgentStore } from "./store.mjs";
 import { createAgentModel, modelErrorMessage, AGENT_TIMEOUT_MS } from "./model.mjs";
-import { PROTOCOL_VERSION, parse, checkVersion, sendSchema, draftSchema, editSchema, versionSchema, retrySchema, threadSchema, selectionSchema, importSchema } from "./schema.mjs";
+import { validateProviderUrl } from "../provider-network.mjs";
+import { providerFailure } from "../call-metadata.mjs";
+import { PROTOCOL_VERSION, parse, checkVersion, sendSchema, draftSchema, editSchema, versionSchema, generateSchema, retrySchema, threadSchema, selectionSchema, importSchema } from "./schema.mjs";
+import { previewEdge, previewImage, sendCachedImage } from "../media-preview.mjs";
 
-export async function createCreativeAgent({ dataDir, auth, model }) {
+export async function createCreativeAgent({ dataDir, auth, workspace, model, generations, imageJobs }) {
     const store = await createAgentStore(dataDir);
     const changes = new EventEmitter();
     const jobs = new Map();
     const connections = new Set();
+    const stopLifecycle = auth.onLifecycle(event => {
+        if (!event.userId) return;
+        for (const connection of connections) if (connection.userId === event.userId && (!event.sessionId || connection.sessionId === event.sessionId)) connection.res.end();
+        if (event.reason !== "disabled") return;
+        for (const [turnId, job] of jobs) {
+            if (job.owner !== event.userId) continue;
+            try { change(job.owner, job.id, thread => { const run = findRun(thread, turnId); if (run.status === "running") Object.assign(run, { status: "cancelled", error: "账号已停用", finishedAt: now() }); }); } catch {}
+            job.controller.abort(new Error("account-disabled"));
+        }
+    });
     const publish = state => changes.emit("change", { userId: state.userId, threadId: state.id, revision: state.revision });
     const change = (owner, id, edit) => { const state = store.update(owner, id, edit); publish(state); return state; };
     function snapshot(state) {
@@ -26,13 +41,25 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
         if (!run) throw new InputError("执行记录不存在", 404);
         return run;
     }
+    function imageBusy(owner, id, exceptItemId) {
+        if (!generations) return false;
+        const thread = store.get(owner, id);
+        for (const message of thread.messages) {
+            if (message.itemId === exceptItemId || !message.imageTask?.taskId || message.imageTask.taskId === "starting") continue;
+            try { if (generations.detail(owner, message.imageTask.taskId).status === "running") return true; } catch {}
+        }
+        return false;
+    }
     function start(owner, id, input, retryOf) {
-        const requestModel = model || createAgentModel({ AGENT_BASE_URL: input.agent.baseUrl, AGENT_API_KEY: input.agent.apiKey, AGENT_MODEL: input.agent.model });
+        if (imageBusy(owner, id)) throw new InputError("正在出图，请先停止或等待完成", 409);
         const existing = store.get(owner, id).runs.find(run => run.requestId === input.requestId);
         if (existing) {
             if (existing.retryOf !== retryOf || (!retryOf && JSON.stringify(existing.input) !== JSON.stringify({ message: input.message, referenceIds: input.referenceIds }))) throw new InputError("请求标识已用于其他消息", 409);
             return store.get(owner, id);
         }
+        const config = workspace.modelConfig(owner,input.agent.channelId,input.agent.model,"text");
+        if(config.apiFormat !== "openai" || !validateProviderUrl(config.baseUrl)) throw new InputError("Agent 需使用公开地址的 OpenAI 渠道",403);
+        const requestModel = model || createAgentModel({ AGENT_BASE_URL: config.baseUrl, AGENT_API_KEY: config.apiKey, AGENT_MODEL: config.model });
         if (!requestModel.configured) throw new InputError("当前用户的文本模型渠道不可用，请在配置与用户偏好中检查渠道", 503);
         const turnId = randomUUID();
         const state = change(owner, id, thread => {
@@ -57,7 +84,10 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
         jobs.set(turnId, job);
         job.promise = (async () => {
             try {
-                const content = await requestModel.generate(run.context, ref => store.asset(owner, id, ref), controller.signal);
+                job.callId = workspace.recordCall(owner,{taskId:turnId,subsystem:"agent",phase:"agent",model:config.model,requestId:input.requestId,channelId:input.agent.channelId,baseUrl:config.baseUrl});
+                job.modelMetadata={};
+                const content = await requestModel.generate(run.context, ref => store.asset(owner, id, ref), controller.signal,value=>{job.modelMetadata=value;});
+                workspace.finishCall(owner,job.callId,"succeeded",{...job.modelMetadata,producedOutputCount:1});
                 if (controller.signal.aborted) throw controller.signal.reason;
                 change(owner, id, thread => {
                     const active = findRun(thread, turnId);
@@ -67,6 +97,7 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
                     Object.assign(active, { status: "succeeded", finishedAt: new Date().toISOString() });
                 });
             } catch (error) {
+                if(job.callId) workspace.finishCall(owner,job.callId,controller.signal.aborted ? "cancelled" : "failed",{...providerFailure(error,[config.apiKey]),upstreamStatus:error?.status ?? job.modelMetadata?.upstreamStatus ?? null,usage:job.modelMetadata?.usage || null,providerRequestId:error?.requestID || job.modelMetadata?.providerRequestId || null,upstreamFinishReason:job.modelMetadata?.upstreamFinishReason || null});
                 change(owner, id, thread => {
                     const active = findRun(thread, turnId);
                     if (active.status !== "running") return;
@@ -75,37 +106,39 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
                     console.error("Agent model request failed", { threadId: id, turnId, error: message });
                     Object.assign(active, { status: "failed", error: message, finishedAt: new Date().toISOString() });
                 });
-            } finally { clearTimeout(timer); jobs.delete(turnId); }
+            } finally { clearTimeout(timer); jobs.delete(turnId); config.apiKey=""; await requestModel.close?.(); }
         })();
         // A persistence failure is operational, never a reason to reissue a model call.
         job.promise.catch(() => console.error("Agent result persistence failed; restart recovery required."));
         return state;
     }
     return {
+        readSource: (owner,threadId,sourceId) => store.asset(owner,threadId,sourceId),
         async handle(req, res, url, json) {
             if (!url.pathname.startsWith("/api/agent/")) return false;
-            const user = auth.userFromRequest(req);
-            if (!user) throw new InputError("请先登录", 401);
+            const user = requireAuthenticated(auth, req);
             const owner = req.headers["x-hitflare-user"] || url.searchParams.get("owner");
             if (owner !== user.id) throw new InputError("登录账号已改变，请刷新页面", 403);
             if (!["GET", "HEAD"].includes(req.method) && !sameOrigin(req)) throw new InputError("请求来源无效", 403);
             const inputJson = async () => {
                 const data = await readJson(req);
-                if (auth.userFromRequest(req)?.id !== user.id) throw new InputError("请重新登录", 401);
+                if (auth.userFromRequest(req)?.sessionId !== user.sessionId) throw new InputError("请重新登录", 401);
                 return data;
             };
             const path = url.pathname.slice("/api/agent/".length);
             if (path === "config" && req.method === "GET") return json(res, 200, { protocolVersion: PROTOCOL_VERSION });
             if (path === "events" && req.method === "GET") {
+                auth.watchSession(req, res);
                 res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", "X-Accel-Buffering": "no" });
                 res.write(`event: ready\ndata: {}\n\n`);
+                const connection = { userId: user.id, sessionId: user.sessionId, res };
                 const listener = event => {
                     if (event.userId !== user.id) return;
-                    if (auth.userFromRequest(req)?.id !== user.id) return res.end();
+                    if (auth.userFromRequest(req)?.sessionId !== user.sessionId) return res.end();
                     res.write(`event: change\ndata: ${JSON.stringify(event)}\n\n`);
                 };
-                changes.on("change", listener); connections.add(res);
-                res.on("close", () => { changes.off("change", listener); connections.delete(res); });
+                changes.on("change", listener); connections.add(connection);
+                res.on("close", () => { changes.off("change", listener); connections.delete(connection); });
                 return;
             }
             if (path === "threads") {
@@ -114,7 +147,7 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
             }
             if (path === "selection" && req.method === "PUT") { const input = parse(selectionSchema, await inputJson()); store.select(user.id, input.threadId); return json(res, 200, { success: true }); }
             if (path === "assets" && req.method === "GET") return json(res, 200, { assets: store.listAssets(user.id) });
-            const match = path.match(/^threads\/([^/]+)(?:\/(draft|assets|turns|plans)(?:\/([^/]+))?(?:\/(restore|handoff|cancel|retry))?)?$/);
+            const match = path.match(/^threads\/([^/]+)(?:\/(draft|assets|turns|plans)(?:\/([^/]+))?(?:\/(restore|handoff|cancel|retry|generate))?)?$/);
             if (!match) throw new InputError("接口不存在", 404);
             const [, id, section, itemId, action] = match;
             const state = store.get(user.id, id);
@@ -130,8 +163,10 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
             }
             if (section === "assets" && itemId && req.method === "GET") {
                 const asset = store.asset(user.id, id, itemId);
-                res.writeHead(200, { "Content-Type": asset.mime, "Content-Length": asset.bytes.length, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
-                return res.end(asset.bytes);
+                const edge = previewEdge(url.searchParams.get("edge"));
+                const preview = await previewImage(asset.bytes, asset.mime, edge);
+                const body = preview || { bytes: asset.bytes, mime: asset.mime };
+                return sendCachedImage(res, req, { ...body, etag: `"${asset.id}${edge ? ":" + edge : ""}"` });
             }
             if (section === "assets" && itemId === "import" && req.method === "POST") {
                 const input = parse(importSchema, await inputJson());
@@ -139,10 +174,9 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
                 return json(res, 201, { asset: input.sourceThreadId === id ? { id: asset.id, title: asset.title, mime: asset.mime } : store.addAsset(user.id, id, asset) });
             }
             if (section === "assets" && !itemId && req.method === "POST") {
-                const data = await new Request("http://localhost", { method: "POST", headers: { "content-type": req.headers["content-type"] || "" }, body: req, duplex: "half" }).formData().catch(() => { throw new InputError("图片上传格式无效"); });
-                const file = data.get("file");
-                if (!(file instanceof File)) throw new InputError("请选择图片文件");
-                const bytes = Buffer.from(await file.arrayBuffer());
+                const {file}=await readImageForm(req,"file");
+                if(!file?.bytes) throw new InputError("请选择图片文件");
+                const bytes=file.bytes;
                 const format = await fileTypeFromBuffer(bytes);
                 if (!format || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(format.mime)) throw new InputError("请上传 PNG、JPEG、WebP 或 GIF 图片");
                 // The login may have changed while a large upload was in flight.
@@ -178,11 +212,52 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
                     const input = parse(versionSchema, await inputJson()); const item = find(store.get(user.id, id)); checkVersion(item.version, input.version);
                     return json(res, 200, { userId: user.id, threadId: id, itemId, version: item.version, prompt: item.content.prompt, references: store.references(user.id, id, item.content.references.map(ref => ref.id)) });
                 }
+                if (action === "generate" && req.method === "POST") {
+                    if (!generations || !imageJobs) throw new InputError("出图服务尚未就绪", 503);
+                    const input = parse(generateSchema, await inputJson());
+                    const current = find(store.get(user.id, id));
+                    checkVersion(current.version, input.version);
+                    let linked = null;
+                    if (current.imageTask?.taskId && current.imageTask.taskId !== "starting") { try { linked = generations.detail(user.id, current.imageTask.taskId); } catch { linked = null; } }
+                    if (linked?.status === "running") return json(res, 200, snapshot(store.get(user.id, id)));
+                    const plans = store.get(user.id, id).messages.filter(message => message.content?.type === "creative_plan");
+                    if (plans.at(-1)?.itemId !== current.itemId) throw new InputError("请确认最新方案后再出图", 409);
+                    if (imageBusy(user.id, id, current.itemId)) throw new InputError("已有方案正在出图", 409);
+                    change(user.id, id, thread => {
+                        const item = find(thread);
+                        checkVersion(item.version, input.version);
+                        if (item.imageTask?.taskId === "starting") throw new InputError("正在准备出图", 409);
+                        item.imageTask = { taskId: "starting", planVersion: item.version };
+                    });
+                    try {
+                        const config = workspace.modelConfig(user.id, input.image.channelId, input.image.model, "image");
+                        const channel = workspace.listChannels(user.id).find(item => item.id === input.image.channelId);
+                        const selected = channel?.models.find(item => item.name === input.image.model);
+                        if (config.apiFormat !== "openai" || !validateProviderUrl(config.baseUrl) || selected?.script?.trim()) throw new InputError("对话出图需使用公开地址、无自定义脚本的 OpenAI 图像渠道", 403);
+                        const prefs = workspace.preferences(user.id);
+                        const count = Math.max(1, Math.min(10, Math.floor(Number(prefs.count) || 1)));
+                        const references = [];
+                        for (const ref of current.content.references) {
+                            const asset = store.asset(user.id, id, ref.id);
+                            const media = await workspace.saveMedia(user.id, Readable.from([asset.bytes]), "image", () => {}, { key: `agent-ref:${id}:${ref.id}`, inputHash: createHash("sha256").update(asset.bytes).digest("hex") });
+                            references.push({ id: ref.id, name: ref.title, type: media.mimeType, storageKey: media.id });
+                        }
+                        const task = generations.createTask(user.id, { clientRequestId: randomUUID(), kind: "image", channelId: input.image.channelId, model: input.image.model, prompt: current.content.prompt, requestedCount: count, params: { quality: input.quality || prefs.quality || "auto", size: input.size || "", count: String(count), background: input.background || "", systemPrompt: prefs.systemPrompt || "", imageModel: input.image.model }, references });
+                        const next = change(user.id, id, thread => { const item = find(thread); if (item.imageTask?.taskId === "starting") item.imageTask = { taskId: task.taskId, planVersion: item.version }; });
+                        const fields = { ...(input.quality ? { quality: input.quality } : {}), ...(input.size ? { size: input.size } : {}), ...(input.background ? { background: input.background } : {}) };
+                        for (let slot = 0; slot < count; slot++) imageJobs.dispatch(user.id, task.taskId, { slotIndex: slot, ...fields });
+                        return json(res, 202, snapshot(next));
+                    } catch (error) {
+                        try { change(user.id, id, thread => { const item = find(thread); if (item.imageTask?.taskId === "starting") delete item.imageTask; }); } catch {}
+                        throw error;
+                    }
+                }
             }
             throw new InputError("请求方法不支持", 405);
         },
         async close() {
-            for (const res of connections) res.end();
+            stopLifecycle();
+            for (const connection of connections) connection.res.end();
             const pending = [...jobs.entries()];
             for (const [turnId, job] of pending) {
                 change(job.owner, job.id, thread => { const run = findRun(thread, turnId); if (run.status === "running") Object.assign(run, { status: "interrupted", error: "服务停止，本轮已中断", finishedAt: new Date().toISOString() }); });
@@ -193,6 +268,8 @@ export async function createCreativeAgent({ dataDir, auth, model }) {
         },
     };
 }
+
+const now = () => new Date().toISOString();
 
 async function readJson(req) {
     if (!req.headers["content-type"]?.startsWith("application/json")) throw new InputError("请使用 JSON 请求", 415);

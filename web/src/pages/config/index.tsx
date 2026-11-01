@@ -1,11 +1,14 @@
-import { AppConfigPanel } from "@/components/layout/app-config-modal";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { useConfigStore } from "@/stores/use-config-store";
 
 export default function ConfigPage() {
-    return (
-        <main className="h-full overflow-y-auto bg-background">
-            <div className="workspace-page">
-                <AppConfigPanel />
-            </div>
-        </main>
-    );
+    const navigate = useNavigate();
+    const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
+    useEffect(() => {
+        openConfigDialog(false);
+        navigate("/", { replace: true });
+    }, [navigate, openConfigDialog]);
+    return null;
 }

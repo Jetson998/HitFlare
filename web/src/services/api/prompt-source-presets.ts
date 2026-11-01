@@ -1,5 +1,3 @@
-import { nanoid } from "nanoid";
-
 export type PromptSource = {
     id: string;
     name: string;
@@ -14,11 +12,11 @@ const PROMPT_REGISTRY_SOURCE_BASE = "https://raw.githubusercontent.com/yukkcat/i
 
 export function createPromptSource(source?: Partial<PromptSource>): PromptSource {
     return {
-        id: source?.id?.trim() || nanoid(),
+        id: source?.id?.trim() || crypto.randomUUID(),
         name: source?.name?.trim() || "",
         url: source?.url?.trim() || "",
         homepage: source?.homepage?.trim() || "",
-        enabled: source?.enabled ?? true,
+        enabled: source?.enabled ?? false,
         builtIn: source?.builtIn ?? false,
     };
 }

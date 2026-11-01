@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useUserStore } from "@/stores/use-user-store";
 import { ALL_PROMPTS_OPTION, fetchPrompts } from "@/services/api/prompts";
 
 export const PROMPT_PAGE_SIZE = 20;
 
 export function usePromptList({ keyword, tags, category = ALL_PROMPTS_OPTION, sourceId = ALL_PROMPTS_OPTION, enabled = true }: { keyword: string; tags: string[]; category?: string; sourceId?: string; enabled?: boolean }) {
+    const identity=useUserStore(state=>state.user?.sessionId);
     const client = useQueryClient();
     useEffect(() => {
         const refresh = () => { void client.invalidateQueries({ queryKey: ["prompts"] }); };
@@ -18,11 +20,11 @@ export function usePromptList({ keyword, tags, category = ALL_PROMPTS_OPTION, so
         return () => clearTimeout(timer);
     }, [keyword]);
     const query = useInfiniteQuery({
-        queryKey: ["prompts", debouncedKeyword, tags, category, sourceId],
+        queryKey: ["prompts",identity, debouncedKeyword, tags, category, sourceId],
         queryFn: ({ pageParam }) => fetchPrompts({ keyword: debouncedKeyword, tag: tags, category, sourceId, page: pageParam, pageSize: PROMPT_PAGE_SIZE }),
         initialPageParam: 1,
         getNextPageParam: (lastPage, pages) => (pages.reduce((total, page) => total + page.items.length, 0) < lastPage.total ? pages.length + 1 : undefined),
-        enabled,
+        enabled:enabled && Boolean(identity),
     });
     const firstPage = query.data?.pages[0];
     return {

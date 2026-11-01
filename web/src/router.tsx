@@ -4,6 +4,9 @@ import { AnalyticsTracker } from "@/components/layout/analytics-tracker";
 import { AdminGuard, AuthGuard } from "@/components/layout/auth-guard";
 import UserLayout from "@/layouts/user-layout";
 import AdminUsersPage from "@/pages/admin/users";
+import AdminLogsPage from "@/pages/admin/logs";
+import AdminStoragePage from "@/pages/admin/storage";
+import AgentPage from "@/pages/agent";
 import AssetsPage from "@/pages/assets";
 import CanvasPage from "@/pages/canvas";
 import CanvasProjectPage from "@/pages/canvas/project";
@@ -38,10 +41,15 @@ export const router = createBrowserRouter([
                     { path: "/assets", element: <AssetsPage /> },
                     { path: "/prompts", element: <PromptsPage /> },
                     { path: "/reverse-prompt", element: <ReversePromptPage /> },
-                    { path: "/canvas", element: <CanvasPage /> },
-                    { path: "/canvas/:id", element: <CanvasProjectPage /> },
+                    { path: "/agent", element: <AgentPage /> },
                     { path: "/config", element: <ConfigPage /> },
-                    { element: <AdminGuard />, children: [{ path: "/admin/users", element: <AdminUsersPage /> }] },
+                    { element: <AdminGuard />, children: [
+                        { path: "/canvas", element: <CanvasPage /> },
+                        { path: "/canvas/:id", element: <CanvasProjectPage /> },
+                        { path: "/admin/users", element: <AdminUsersPage /> },
+                        { path: "/admin/logs", element: <AdminLogsPage /> },
+                        { path: "/admin/storage", element: <AdminStoragePage /> },
+                    ] },
                 ],
             },
         ],

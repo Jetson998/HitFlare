@@ -3,11 +3,11 @@ import { AuthApiError } from "@/services/api/auth";
 import { useUserStore } from "@/stores/use-user-store";
 
 export function useIsAdmin() {
-    return useUserStore((state) => state.user?.role === "admin");
+    return useUserStore((state) => state.user?.permissions?.includes("account:manage") === true);
 }
 
 export function isCurrentUserAdmin() {
-    return useUserStore.getState().user?.role === "admin";
+    return useUserStore.getState().user?.permissions?.includes("account:manage") === true;
 }
 
 export function requireAdminAction() {

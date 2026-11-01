@@ -1,3 +1,5 @@
+import {finishPluginOutputs,trackedVideoCreate,recordGenerationOperation,reportGeneration,providerMetadata,assertGenerationSession,type GenerationContext,type OutputTracking} from "./generations";
+import {providerApiError} from "./provider-error";
 import axios from "axios";
 import { nanoid } from "nanoid";
 
@@ -14,12 +16,12 @@ import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 type VideoResponse = { id: string; status?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null };
 type ApiVideoResponse = VideoResponse | { code?: number | string; data?: VideoResponse | null; msg?: string; message?: string; error?: { message?: string } };
 type ApiEnvelope<T> = T | { code?: number | string; data?: T | null; msg?: string; message?: string; error?: { message?: string } };
-type RequestOptions = { signal?: AbortSignal };
+type RequestOptions = { signal?: AbortSignal; generation?:GenerationContext };
 type VideoMediaOptions = RequestOptions & { videos?: ReferenceVideo[]; audios?: ReferenceAudio[] };
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
-export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "gemini" | "plugin"; model: string };
+export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string; persist?:()=>Promise<void>;ready?:()=>boolean };
+export type VideoGenerationTask = { id: string; provider: "openai" | "gemini" | "plugin"; model: string; tracking?:OutputTracking };
 type GeminiInlineData = { bytesBase64Encoded: string; mimeType: string };
 type GeminiVideoOperation = {
     name?: string;
@@ -71,7 +73,7 @@ function videoTaskFailed(message: string) {
 
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoMediaOptions): Promise<VideoGenerationTask> {
     const selectedModel = (config.model || config.videoModel).trim();
-    const requestConfig = resolveModelRequestConfig(config, selectedModel);
+    const requestConfig = await resolveModelRequestConfig(config, selectedModel);
     const script = resolveModelScript(config, selectedModel);
     if (script) return createPluginVideoTask(requestConfig, selectedModel, script, prompt, references, options);
     assertVideoConfig(requestConfig, requestConfig.model);
@@ -79,15 +81,34 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
     return createOpenAIVideoTask(requestConfig, selectedModel, prompt, references, options);
 }
 
-export async function pollVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
-    if (task.provider === "plugin") {
-        const result = pluginVideoResults.get(task.id);
-        return result ? { status: "completed", result } : { status: "failed", error: apiText("pluginVideoExpired") };
+export async function pollVideoGenerationTask(config:AiConfig,task:VideoGenerationTask,options?:RequestOptions):Promise<VideoGenerationTaskState> {
+    try {
+        let state:VideoGenerationTaskState;
+        if(task.provider==="plugin") {const result=pluginVideoResults.get(task.id);state=result?{status:"completed",result}:{status:"failed",error:apiText("pluginVideoExpired")};}
+        else {
+            const requestConfig=await resolveModelRequestConfig(config,task.model);assertVideoConfig(requestConfig,requestConfig.model);
+            state=task.provider==="gemini"?await pollGeminiVideoTask(requestConfig,task,options):await pollOpenAIVideoTask(requestConfig,task,options);
+        }
+        const context=options?.generation;
+        if(context){
+            assertGenerationSession(context.sessionId);
+            if(state.status==="completed") {
+                if(!context.completePersist && !context.completed)await confirmVideoOutput(context);
+                state.result.persist=context.completePersist;
+                state.result.ready=()=>Boolean(context.completed);
+            }
+        }
+        return state;
+    }catch(error){if(options?.generation && !options.generation.completed)try{await recordGenerationOperation(options.generation,error,"poll");}catch{}throw error;}
+}
+
+async function confirmVideoOutput(context:GenerationContext|undefined,response?:import("axios").AxiosResponse) {
+    if(!context || context.completed)return;
+    if(!context.completePersist){
+        const body={eventId:crypto.randomUUID(),status:"succeeded",producedOutputCount:1,...(context.startedAt?{durationMs:Date.now()-context.startedAt}:{}),...(response?providerMetadata(response):{})};
+        context.completePersist=async()=>{if(!context.completed){await reportGeneration(context,context.callId!,body);context.completed=true;}};
     }
-    const requestConfig = resolveModelRequestConfig(config, task.model);
-    assertVideoConfig(requestConfig, requestConfig.model);
-    if (task.provider === "gemini") return pollGeminiVideoTask(requestConfig, task, options);
-    return pollOpenAIVideoTask(requestConfig, task, options);
+    try{await context.completePersist();}catch{context.warning?.("视频模型已完成，生成记录保存失败；请手动保存当前结果");}
 }
 
 async function createPluginVideoTask(config: AiConfig, model: string, script: string, prompt: string, references: ReferenceImage[], options?: VideoMediaOptions): Promise<VideoGenerationTask> {
@@ -114,12 +135,14 @@ async function createPluginVideoTask(config: AiConfig, model: string, script: st
                 watermark: boolConfig(config.videoWatermark, false),
                 mode: resolveVideoMode(config.videoMode, refs.length),
             },
-            signal: options?.signal,
+            signal: options?.signal,generation:options?.generation,
         }),
     );
     const id = nanoid();
     pluginVideoResults.set(id, result);
-    return { id, provider: "plugin", model };
+    const tracking=await finishPluginOutputs(options?.generation,1);
+    if(options?.generation)options.generation.completed=true;
+    return { id, provider: "plugin", model,tracking };
 }
 
 function videoPluginResult(result: unknown): VideoGenerationResult {
@@ -129,20 +152,14 @@ function videoPluginResult(result: unknown): VideoGenerationResult {
         const record = result as Record<string, unknown>;
         if (record.blob instanceof Blob) return { blob: record.blob };
         const url = [record.url, record.video_url, record.result_url].find((value) => typeof value === "string" && value) as string | undefined;
-        if (url) return { url, mimeType: "video/mp4" };
+        if (url) return {url,mimeType:"video/mp4"};
     }
     throw new Error(apiText("scriptNoVideo"));
 }
 
 export async function storeGeneratedVideo(result: VideoGenerationResult): Promise<UploadedFile> {
     if (result.blob) return uploadMediaFile(result.blob, "video");
-    if (result.url) {
-        try {
-            return await uploadMediaFile(result.url, "video");
-        } catch {
-            return { url: result.url, storageKey: "", bytes: 0, mimeType: result.mimeType || "video/mp4" };
-        }
-    }
+    if (result.url) return uploadMediaFile(result.url,"video");
     throw new Error(apiText("noPlayableVideo"));
 }
 
@@ -169,28 +186,33 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
     videos.forEach((file) => body.append("video[]", file));
     audios.forEach((file) => body.append("audio[]", file));
     try {
-        const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, "/videos"), body, { headers: aiHeaders(config), signal: options?.signal })).data);
-        if (!created.id) throw new Error(apiText("noVideoTaskId"));
-        return { id: created.id, provider: "openai", model };
+        return await trackedVideoCreate(options?.generation,()=>axios.post<ApiVideoResponse>(aiApiUrl(config,"/videos"),body,{headers:aiHeaders(config),signal:options?.signal}),data=>{
+            const created=unwrapVideoResponse(data);if(!created.id)throw new Error(apiText("noVideoTaskId"));
+            return {id:created.id,provider:"openai" as const,model};
+        });
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskCreateFailed")));
+        throw providerApiError(error,options?.generation?"视频创建请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("videoTaskCreateFailed")),config.apiKey);
     }
 }
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     try {
-        const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data);
+        const response=await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal });
+        const video=unwrapVideoResponse(response.data);
+        if(options?.generation && (video.status==="failed" || video.status==="cancelled")) await reportGeneration(options.generation,options.generation.callId!,{eventId:crypto.randomUUID(),status:"failed",...providerMetadata(response),appErrorCode:"PROVIDER_BODY_ERROR",errorOrigin:"upstream",failureStage:"poll"});
         const url = videoResultUrl(video);
-        if (url) return { status: "completed", result: await videoResultFromUrl(url, options) };
+        if(url){await confirmVideoOutput(options?.generation,response);return {status:"completed",result:await videoResultFromUrl(url,options)};}
         if (video.status === "completed") {
-            const content = await axios.get<Blob>(aiApiUrl(config, `/videos/${task.id}/content`), { headers: aiHeaders(config), responseType: "blob", signal: options?.signal });
-            await assertVideoBlob(content.data);
-            return { status: "completed", result: { blob: content.data } };
+            await confirmVideoOutput(options?.generation,response);
+            try {
+                const content = await axios.get<Blob>(aiApiUrl(config, `/videos/${task.id}/content`), { headers: aiHeaders(config), responseType: "blob", signal: options?.signal });
+                await assertVideoBlob(content.data);return {status:"completed",result:{blob:content.data}};
+            }catch(error){if(options?.generation)try{await recordGenerationOperation(options.generation,error,"download");}catch{}throw error;}
         }
-        if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: readApiErrorMessage(video.error?.message) || apiText("videoGenerationFailed") };
+        if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: options?.generation?`视频模型返回失败（HTTP ${response.status}）`:readApiErrorMessage(video.error?.message) || apiText("videoGenerationFailed") };
         return { status: "pending" };
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskQueryFailed")));
+        throw providerApiError(error,options?.generation?"视频轮询未完成，请查看调用记录后手动恢复":readAxiosError(error, apiText("videoTaskQueryFailed")),config.apiKey);
     }
 }
 
@@ -201,7 +223,8 @@ async function videoResultFromUrl(url: string, options?: RequestOptions): Promis
         return { blob: response.data };
     } catch (error) {
         if (axios.isCancel(error) || options?.signal?.aborted) throw error;
-        return { url, mimeType: "video/mp4" };
+        if(options?.generation)try{await recordGenerationOperation(options.generation,error,"download");}catch{}
+        throw error;
     }
 }
 
@@ -220,7 +243,7 @@ async function createGeminiVideoTask(config: AiConfig, model: string, prompt: st
     if (videos[0]) instance.video = await fileToGeminiInline(videos[0]);
     if (audios[0]) instance.audio = await fileToGeminiInline(audios[0]);
     try {
-        const created = unwrapEnvelope((await axios.post<ApiEnvelope<GeminiVideoOperation>>(geminiVideoUrl(config, model, "predictLongRunning"), {
+        return await trackedVideoCreate(options?.generation,()=>axios.post<ApiEnvelope<GeminiVideoOperation>>(geminiVideoUrl(config, model, "predictLongRunning"), {
             instances: [instance],
             parameters: {
                 aspectRatio: videoAspectRatio(config.size),
@@ -229,25 +252,30 @@ async function createGeminiVideoTask(config: AiConfig, model: string, prompt: st
                 generateAudio: boolConfig(config.videoGenerateAudio, true),
                 addWatermark: boolConfig(config.videoWatermark, false),
             },
-        }, { headers: geminiVideoHeaders(config), signal: options?.signal })).data, apiText("noVideoTask"));
+        }, { headers: geminiVideoHeaders(config), signal: options?.signal }),data=>{
+        const created=unwrapEnvelope<GeminiVideoOperation>(data,apiText("noVideoTask"));
         if (!created.name) throw new Error(apiText("noVideoTaskId"));
-        return { id: created.name, provider: "gemini", model };
+        return { id: created.name, provider: "gemini" as const, model };
+        });
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskCreateFailed")));
+        throw providerApiError(error,options?.generation?"视频创建请求未完成，请查看调用记录后手动处理":readAxiosError(error, apiText("videoTaskCreateFailed")),config.apiKey);
     }
 }
 
 async function pollGeminiVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     try {
-        const state = unwrapEnvelope((await axios.get<ApiEnvelope<GeminiVideoOperation>>(geminiOperationUrl(config, task.id), { headers: geminiVideoHeaders(config), signal: options?.signal })).data, apiText("videoTaskQueryFailed"));
-        if (state.error) return { status: "failed", error: readApiErrorMessage(state.error.message) || apiText("videoGenerationFailed") };
+        const response=await axios.get<ApiEnvelope<GeminiVideoOperation>>(geminiOperationUrl(config, task.id), { headers: geminiVideoHeaders(config), signal: options?.signal });
+        const state=unwrapEnvelope(response.data,apiText("videoTaskQueryFailed"));
+        if(options?.generation && state.error) await reportGeneration(options.generation,options.generation.callId!,{eventId:crypto.randomUUID(),status:"failed",...providerMetadata(response),appErrorCode:"PROVIDER_BODY_ERROR",errorOrigin:"upstream",failureStage:"poll"});
+        if (state.error) return { status: "failed", error: options?.generation?`视频模型返回失败（HTTP ${response.status}）`:readApiErrorMessage(state.error.message) || apiText("videoGenerationFailed") };
         if (!state.done) return { status: "pending" };
         const uri = state.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
         if (!uri) return { status: "failed", error: apiText("noPlayableVideo") };
+        await confirmVideoOutput(options?.generation,response);
         const url = uri.includes("key=") ? uri : `${uri}${uri.includes("?") ? "&" : "?"}key=${config.apiKey}`;
         return { status: "completed", result: await videoResultFromUrl(url, options) };
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskQueryFailed")));
+        throw providerApiError(error,options?.generation?"视频轮询未完成，请查看调用记录后手动恢复":readAxiosError(error, apiText("videoTaskQueryFailed")),config.apiKey);
     }
 }
 

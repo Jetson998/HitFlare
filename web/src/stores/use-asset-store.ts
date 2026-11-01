@@ -1,10 +1,6 @@
-import { create } from "zustand";
-import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
-
-import { nanoid } from "nanoid";
-import { localForageStorage } from "@/lib/localforage-storage";
-import { cleanupUnusedImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
-import { cleanupUnusedMedia, resolveMediaUrl } from "@/services/file-storage";
+import {create} from "zustand";
+import {workspaceRequest,workspaceJson,uploadServerMedia,serverMediaId,sessionIdentity} from "@/services/api/workspace";
+import {useUserStore} from "./use-user-store";
 
 export type AssetKind = "text" | "image" | "video" | "audio";
 export type TextAsset = AssetBase<"text"> & { data: { content: string } };
@@ -27,86 +23,70 @@ type AssetBase<T extends AssetKind> = {
     metadata?: Record<string, unknown>;
 };
 
-type AssetStore = {
-    hydrated: boolean;
-    assets: Asset[];
-    addAsset: (asset: Omit<Asset, "id" | "createdAt" | "updatedAt">) => string;
-    updateAsset: (id: string, patch: Partial<Omit<Asset, "id" | "createdAt">>) => void;
-    removeAsset: (id: string) => void;
-    replaceAssets: (assets: Asset[]) => void;
-    cleanupImages: (extra?: unknown) => void;
+type AssetInput=Omit<Asset,"id"|"createdAt"|"updatedAt">;
+type AssetStore={
+    hydrated:boolean;assets:Asset[];error:string;
+    load:()=>Promise<void>;
+    addAsset:(asset:AssetInput)=>Promise<string>;
+    updateAsset:(id:string,patch:Partial<Omit<Asset,"id"|"createdAt">>)=>Promise<void>;
+    removeAsset:(id:string)=>Promise<void>;
+    replaceAssets:(assets:Asset[])=>void;
+    cleanupImages:(extra?:unknown)=>void;
 };
-
-const ASSET_STORE_KEY = "infinite-canvas:asset_store";
-
-const assetStorage: PersistStorage<AssetStore> = {
-    getItem: async (name) => {
-        const value = await localForageStorage.getItem(name);
-        if (!value) return null;
-        const parsed = JSON.parse(value) as StorageValue<AssetStore>;
-        parsed.state.assets = await Promise.all(
-            parsed.state.assets.map(async (asset) => {
-                if (asset.kind === "video" && asset.data.storageKey) return { ...asset, data: { ...asset.data, url: await resolveMediaUrl(asset.data.storageKey, asset.data.url) } };
-                if (asset.kind === "audio" && asset.data.storageKey) return { ...asset, data: { ...asset.data, url: await resolveMediaUrl(asset.data.storageKey, asset.data.url) } };
-                if (asset.kind !== "image") return asset;
-                if (asset.data.storageKey)
-                    return {
-                        ...asset,
-                        coverUrl: asset.coverUrl.startsWith("blob:") ? await resolveImageUrl(asset.data.storageKey, asset.coverUrl) : asset.coverUrl,
-                        data: { ...asset.data, dataUrl: await resolveImageUrl(asset.data.storageKey, asset.data.dataUrl) },
-                    };
-                if (!asset.data.dataUrl.startsWith("data:image/")) return asset;
-                const image = await uploadImage(asset.data.dataUrl);
-                return { ...asset, coverUrl: asset.coverUrl.startsWith("data:image/") ? image.url : asset.coverUrl, data: { ...asset.data, dataUrl: image.url, storageKey: image.storageKey, bytes: image.bytes, mimeType: image.mimeType } };
-            }),
-        );
-        return parsed;
+let epoch=0;
+async function serverAsset(input:AssetInput) {
+    const identity=sessionIdentity();
+    let data=input.data,coverUrl=input.coverUrl;
+    if(input.kind!=="text") {
+        const source=input.kind === "image" ? (input.data as ImageAsset["data"]).dataUrl : (input.data as VideoAsset["data"]).url;
+        let mediaId=serverMediaId(source);
+        if(!mediaId) mediaId=(await uploadServerMedia(source,input.kind)).id;
+        data={...data,storageKey:mediaId};
+        if(input.kind === "image") coverUrl=`/api/workspace/media/${mediaId}/content`;
+    }
+    if(coverUrl && !serverMediaId(coverUrl)) coverUrl=(await uploadServerMedia(coverUrl,"image")).url;
+    if(useUserStore.getState().user?.sessionId!==identity) throw new Error("登录账号已改变，请重新保存");
+    return {...input,data,coverUrl};
+}
+export const useAssetStore=create<AssetStore>()((set,get)=>({
+    hydrated:false,assets:[],error:"",
+    load:async()=>{
+        const current=epoch;
+        try {
+            const {assets}=await workspaceRequest<{assets:Asset[]}>("assets");
+            if(current===epoch) set({assets,hydrated:true,error:""});
+        } catch(error) {if(current===epoch) set({error:error instanceof Error ? error.message : "资产加载失败"});throw error;}
     },
-    setItem: (name, value) => localForageStorage.setItem(name, JSON.stringify(value)),
-    removeItem: (name) => localForageStorage.removeItem(name),
-};
-
-export const useAssetStore = create<AssetStore>()(
-    persist(
-        (set, get) => ({
-            hydrated: false,
-            assets: [],
-            addAsset: (asset) => {
-                const assetKey = asset.metadata?.assetKey;
-                const storageKey = "storageKey" in asset.data ? asset.data.storageKey : undefined;
-                const existing = get().assets.find((item) => (assetKey && item.metadata?.assetKey === assetKey) || (storageKey && "storageKey" in item.data && item.data.storageKey === storageKey));
-                if (existing) return existing.id;
-                const now = new Date().toISOString();
-                const id = nanoid();
-                set((state) => ({ assets: [{ ...asset, id, createdAt: now, updatedAt: now } as Asset, ...state.assets] }));
-                return id;
-            },
-            updateAsset: (id, patch) =>
-                set((state) => ({
-                    assets: state.assets.map((asset) => (asset.id === id ? ({ ...asset, ...patch, updatedAt: new Date().toISOString() } as Asset) : asset)),
-                })),
-            removeAsset: (id) =>
-                set((state) => {
-                    const assets = state.assets.filter((asset) => asset.id !== id);
-                    get().cleanupImages({ assets });
-                    return { assets };
-                }),
-            replaceAssets: (assets) => set({ assets }),
-            cleanupImages: (extra) => {
-                window.setTimeout(async () => {
-                    const { useCanvasStore } = await import("@/stores/canvas/use-canvas-store");
-                    await cleanupUnusedImages({ assets: get().assets, projects: useCanvasStore.getState().projects, extra });
-                    await cleanupUnusedMedia({ assets: get().assets, projects: useCanvasStore.getState().projects, extra });
-                }, 0);
-            },
-        }),
-        {
-            name: ASSET_STORE_KEY,
-            storage: assetStorage,
-            partialize: (state) => ({ assets: state.assets }) as StorageValue<AssetStore>["state"],
-            onRehydrateStorage: () => () => {
-                useAssetStore.setState({ hydrated: true });
-            },
-        },
-    ),
-);
+    addAsset:async input=>{
+        const current=epoch;
+        const payload=await serverAsset(input);
+        if(current!==epoch) throw new Error("登录账号已改变，请重新保存");
+        const requestId=typeof input.metadata?.assetKey === "string" ? input.metadata.assetKey : crypto.randomUUID();
+        const {asset}=await workspaceJson<{asset:Asset}>("assets","POST",payload,{"Idempotency-Key":requestId});
+        if(current!==epoch) throw new Error("登录账号已改变，请重新保存");
+        set(state=>({assets:[asset,...state.assets.filter(item=>item.id!==asset.id)]}));
+        return asset.id;
+    },
+    updateAsset:async(id,patch)=>{
+        const current=epoch,previous=get().assets.find(item=>item.id===id);
+        if(!previous) throw new Error("资产不存在，请刷新后重试");
+        const {id:unused,createdAt,updatedAt,...input}={...previous,...patch};
+        const payload=await serverAsset(input as AssetInput);
+        if(current!==epoch) throw new Error("登录账号已改变，请重新保存");
+        const {asset}=await workspaceJson<{asset:Asset}>(`assets/${encodeURIComponent(id)}`,"PUT",payload);
+        if(current===epoch) set(state=>({assets:state.assets.map(item=>item.id===id ? asset : item)}));
+    },
+    removeAsset:async id=>{
+        const current=epoch;
+        await workspaceRequest(`assets/${encodeURIComponent(id)}`,{method:"DELETE"});
+        if(current===epoch) set(state=>({assets:state.assets.filter(item=>item.id!==id)}));
+    },
+    replaceAssets:()=>{throw new Error("旧浏览器合并回写已停用，请通过账号资产接口保存");},
+    cleanupImages:()=>{}, // Physical cleanup is disabled until all server references are integrated.
+}));
+useUserStore.subscribe((state,previous)=>{
+    if(state.user?.sessionId===previous.user?.sessionId) return;
+    epoch++;useAssetStore.setState({assets:[],hydrated:false,error:""});
+    if(state.user) void useAssetStore.getState().load().catch(()=>{});
+});
+if(useUserStore.getState().user) void useAssetStore.getState().load().catch(()=>{});

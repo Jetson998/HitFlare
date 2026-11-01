@@ -1,7 +1,7 @@
-import { App, Button, Form, Input, Modal, Progress, Select, Tabs } from "antd";
+import { App, Input, Modal, Progress, Select } from "antd";
 import type { TFunction } from "i18next";
-import { Check, Cloud, Download, Pencil, Plus, RefreshCw, Trash2, Upload, Wifi } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Cable, Check, Cloud, Download, HardDrive, Pencil, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, Wifi } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
@@ -9,6 +9,7 @@ import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
 import { ConfigLocalProxy } from "@/components/layout/config-local-proxy";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
+import { configCard, configCardBody, configFieldLabel, configGroupLabel, configHint, configInput, configSelect, configTextArea } from "@/components/layout/config-surface";
 import type { AppLocale } from "@/i18n";
 import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
@@ -30,6 +31,8 @@ type WebdavDomainProgress = {
     status?: "active" | "success" | "exception";
 };
 
+const grokPrimary = "inline-flex h-9 min-w-[108px] items-center justify-center gap-1.5 rounded-full bg-[#111827] px-3 text-[13px] leading-5 !text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40";
+const grokSecondary = "inline-flex h-9 min-w-[108px] items-center justify-center gap-1.5 rounded-full bg-[#F3F4F6] px-3 text-[13px] leading-5 text-[#374151] hover:bg-[#E5E7EB] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700";
 const modelGroups: ModelGroup[] = [
     { capability: "image", modelKey: "imageModel", labelKey: "config.preferences.defaultImageModel" },
     { capability: "video", modelKey: "videoModel", labelKey: "config.preferences.defaultVideoModel" },
@@ -54,43 +57,23 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     const configInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<ConfigTabKey>(initialTab);
     const [editingChannelId, setEditingChannelId] = useState("");
-    const [testingWebdav, setTestingWebdav] = useState(false);
-    const [syncingWebdav, setSyncingWebdav] = useState(false);
-    const [webdavSyncStatus, setWebdavSyncStatus] = useState("");
-    const [webdavDomainProgress, setWebdavDomainProgress] = useState(createWebdavDomainProgress);
     const isAdmin = useIsAdmin();
+    const configError=useConfigStore(state=>state.error);
     const config = useConfigStore((state) => state.config);
-    const webdav = useConfigStore((state) => state.webdav);
     const updateConfig = useConfigStore((state) => state.updateConfig);
-    const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
     const shouldPromptContinue = useConfigStore((state) => state.shouldPromptContinue);
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
     const clearPromptContinue = useConfigStore((state) => state.clearPromptContinue);
-    const webdavReady = isAdmin && Boolean(webdav.url.trim());
-    const visibleWebdav = isAdmin ? webdav : { ...webdav, url: "", username: "", password: "", directory: "" };
     const editingChannel = config.channels.find((channel) => channel.id === editingChannelId) || null;
     const locale = i18n.resolvedLanguage as AppLocale;
     const showChannelSetup = config.channels.length === 0;
     useEffect(() => setActiveTab(initialTab), [initialTab]);
 
-    const saveConfig = (nextConfig: AiConfig) => {
-        (Object.keys(nextConfig) as Array<keyof AiConfig>).forEach((key) => {
-            // Channel edits rebuild the complete config object. Keep the platform
-            // proxy fields out of a regular user's save so personal channel/API
-            // settings remain editable without touching administrator-only state.
-            if (!isAdmin && (key === "proxyEnabled" || key === "proxyUrl")) return;
-            updateConfig(key, nextConfig[key]);
-        });
+    const saveConfig=(nextConfig:AiConfig)=>useConfigStore.getState().saveConfig(nextConfig);
+    const finishConfig=async()=>{
+        try {await useConfigStore.getState().flush();setConfigDialogOpen(false);message.success(t(shouldPromptContinue ? "config.savedContinue" : "config.saved"));clearPromptContinue();}
+        catch(error) {message.error(error instanceof Error ? error.message : "配置保存失败");}
     };
-
-    const finishConfig = () => {
-        const ready = config.channels.some((channel) => channel.baseUrl.trim() && channel.apiKey.trim() && channel.models.length);
-        setConfigDialogOpen(false);
-        if (!ready) return;
-        message.success(t(shouldPromptContinue ? "config.savedContinue" : "config.saved"));
-        clearPromptContinue();
-    };
-
     const loadConfigFile = async (file: File) => {
         try {
             await importAppConfig(file);
@@ -111,280 +94,158 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
         }
     };
 
-    const updateChannels = (channels: ModelChannel[]) => saveConfig(withChannels(config, channels));
+    const updateChannels=(channels:ModelChannel[])=>saveConfig(withChannels(config,channels));
 
     const addChannel = () => {
         const channel = createModelChannel({ name: t("config.channels.numberedName", { count: config.channels.length + 1 }), baseUrl: "" });
-        updateChannels([...config.channels, channel]);
+        useConfigStore.setState({config:withChannels(config,[...config.channels,channel])});
         setEditingChannelId(channel.id);
     };
 
-    const deleteChannel = (id: string) => {
+    const deleteChannel = async (id: string) => {
         if (config.channels.length <= 1) {
             message.warning(t("config.channels.keepOne"));
             return;
         }
-        updateChannels(config.channels.filter((channel) => channel.id !== id));
+        try {await updateChannels(config.channels.filter(channel=>channel.id!==id));} catch(error) {message.error(error instanceof Error ? error.message : "渠道删除失败");}
     };
 
-    const saveChannel = (channel: ModelChannel) => {
-        updateChannels(config.channels.map((item) => (item.id === channel.id ? channel : item)));
-    };
+    const saveChannel=async(channel:ModelChannel)=>{await updateChannels(config.channels.map(item=>item.id===channel.id ? channel : item));};
 
-    const testWebdav = async () => {
-        try {
-            requireAdminAction();
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("auth.adminOnlyAction"));
-            return;
-        }
-        if (!webdavReady) {
-            message.error(t("config.webdav.missingUrl"));
-            return;
-        }
-        setTestingWebdav(true);
-        try {
-            await testWebdavConnection(webdav);
-            message.success(t("config.webdav.available"));
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("config.webdav.testFailed"));
-        } finally {
-            setTestingWebdav(false);
-        }
-    };
-
-    const updateWebdavProgress = (event: AppSyncProgressEvent) => {
-        setWebdavSyncStatus(event.stage);
-        if (!event.domain) return;
-        setWebdavDomainProgress((current) => ({
-            ...current,
-            [event.domain as AppSyncDomainKey]: {
-                stage: event.stage,
-                current: event.current,
-                total: event.total,
-                status: event.status,
-            },
-        }));
-    };
-
-    const syncWebdav = async () => {
-        try {
-            requireAdminAction();
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("auth.adminOnlyAction"));
-            return;
-        }
-        if (!webdavReady) {
-            message.error(t("config.webdav.missingUrl"));
-            return;
-        }
-        setSyncingWebdav(true);
-        setWebdavDomainProgress(createWebdavDomainProgress());
-        setWebdavSyncStatus(t("config.webdav.preparing"));
-        try {
-            const result = await syncAppDataToWebdav(webdav, updateWebdavProgress);
-            updateWebdavConfig("lastSyncedAt", result.syncedAt);
-            message.success(t("config.webdav.completed", { projects: result.projects, assets: result.assets, records: result.imageLogs + result.videoLogs, files: result.uploadedFiles, bytes: formatBytes(result.uploadedBytes) }));
-        } catch (error) {
-            setWebdavSyncStatus(error instanceof Error ? error.message : t("config.webdav.failed"));
-            message.error(error instanceof Error ? error.message : t("config.webdav.failed"));
-        } finally {
-            setSyncingWebdav(false);
-        }
-    };
+    const sections: { key: ConfigTabKey; label: string; icon: ReactNode }[] = [
+        { key: "channels", label: t("config.tabs.channels"), icon: <Cable className="size-4" /> },
+        ...(isAdmin ? [{ key: "local-proxy" as const, label: t("config.tabs.localProxy"), icon: <Wifi className="size-4" /> }] : []),
+        { key: "preferences", label: t("config.tabs.preferences"), icon: <SlidersHorizontal className="size-4" /> },
+        ...(isAdmin ? [{ key: "prompt-sources" as const, label: t("config.tabs.promptSources"), icon: <Sparkles className="size-4" /> }] : []),
+        ...(isAdmin ? [{ key: "webdav" as const, label: "WebDAV", icon: <Cloud className="size-4" /> }] : []),
+        { key: "local-storage", label: t("config.tabs.localStorage"), icon: <HardDrive className="size-4" /> },
+    ];
+    const sectionLabel = sections.find((item) => item.key === activeTab)?.label || t("config.title");
 
     return (
         <>
             <div className="workspace-heading">
                 <div>
                     {!showDoneButton ? <h1 className="workspace-title">{t("config.title")}</h1> : null}
-                    <p className="workspace-description">{t(showDoneButton ? "config.fileSecurity" : "config.description")}</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button disabled={!isAdmin} icon={<Upload className="size-3.5" />} onClick={() => configInputRef.current?.click()}>
-                        {t("config.import")}
-                    </Button>
-                    <Button disabled={!isAdmin} type="text" icon={<Download className="size-3.5" />} onClick={exportConfig}>
-                        {t("config.export")}
-                    </Button>
+                    <button type="button" disabled={!isAdmin} className={grokSecondary} onClick={() => configInputRef.current?.click()}><Upload className="size-3.5" />{t("config.import")}</button>
+                    <button type="button" disabled={!isAdmin} className={grokSecondary} onClick={exportConfig}><Download className="size-3.5" />{t("config.export")}</button>
                     <input ref={configInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && void loadConfigFile(event.target.files[0])} />
                 </div>
             </div>
-            {!isAdmin ? <div className="mb-4 rounded-md border border-dashed border-stone-200 px-3 py-2 text-xs text-stone-500 dark:border-stone-800">{t("auth.adminOnlyNotice")}</div> : null}
-            <Tabs
-                activeKey={activeTab}
-                onChange={(key) => setActiveTab(key as ConfigTabKey)}
-                items={[
-                    {
-                        key: "channels",
-                        label: t("config.tabs.channels"),
-                        children: (
-                            <div>
-                                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                    <div className="text-xs text-stone-500">{t("config.channels.description")}</div>
-                                    <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
-                                        {t("config.channels.add")}
-                                    </Button>
-                                </div>
-                                {showChannelSetup ? (
-                                    <div className="mb-4 rounded-xl border border-border bg-background px-5 py-5 text-stone-950 dark:text-stone-100">
-                                        <div className="flex items-start gap-3">
-                                            <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950"><Check className="size-4" /></div>
-                                            <div className="min-w-0">
-                                                <div className="text-sm font-semibold">{t("config.channels.setupTitle")}</div>
-                                                <p className="mt-1 text-sm leading-6 text-stone-600 dark:text-stone-300">{t("config.channels.setupDescription")}</p>
-                                                <ol className="mt-3 space-y-1.5 text-xs leading-5 text-stone-600 dark:text-stone-300">
-                                                    <li>{t("config.channels.setupStepEndpoint")}</li>
-                                                    <li>{t("config.channels.setupStepKey")}</li>
-                                                    <li>{t("config.channels.setupStepModel")}</li>
-                                                </ol>
-                                                <Button className="mt-4" type="primary" size="small" icon={<Plus className="size-3.5" />} onClick={addChannel}>
-                                                    {t("config.channels.setupAction")}
-                                                </Button>
-                                            </div>
+            {configError ? <p role="alert" className="text-red-500">{configError}；配置未保存，请重试。</p> : null}
+            <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
+                <nav aria-label={t("config.title")} className="flex shrink-0 gap-1 overflow-x-auto lg:sticky lg:top-0 lg:w-[188px] lg:flex-col">
+                    {sections.map((item) => (
+                        <button key={item.key} type="button" aria-current={activeTab === item.key ? "page" : undefined} className={`flex shrink-0 items-center gap-2 rounded-[10px] px-3 py-2 text-left text-[13px] leading-5 text-[#374151] hover:bg-white/55 dark:text-stone-300 dark:hover:bg-white/10 ${activeTab === item.key ? "bg-white font-medium text-[#111827] shadow-[0_1px_2px_rgba(15,23,42,0.06)] dark:bg-stone-800 dark:text-stone-100" : ""}`} onClick={() => setActiveTab(item.key)}>
+                            {item.icon}
+                            <span className="truncate">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+                <div className="min-w-0 flex-1">
+                    <h2 className="mb-4 text-sm font-medium leading-5 text-[#111827] dark:text-stone-100">{sectionLabel}</h2>
+                    {activeTab === "channels" ? (
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <p className="text-[13px] leading-5 text-[#6B7280]">{t("config.channels.description")}</p>
+                                {showChannelSetup ? null : <button type="button" className={grokPrimary} onClick={addChannel}><Plus className="size-4" />{t("config.channels.add")}</button>}
+                            </div>
+                            {showChannelSetup ? (
+                                <div className={`${configCardBody} text-[#111827] dark:text-stone-100`}>
+                                    <div className="flex items-start gap-3">
+                                        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#111827] text-white dark:bg-stone-100 dark:text-stone-950"><Check className="size-4" /></div>
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-medium leading-5">{t("config.channels.setupTitle")}</div>
+                                            <p className={configHint}>{t("config.channels.setupDescription")}</p>
+                                            <ol className="mt-4 space-y-2 text-[13px] leading-5 text-[#6B7280]">
+                                                <li>{t("config.channels.setupStepEndpoint")}</li>
+                                                <li>{t("config.channels.setupStepKey")}</li>
+                                                <li>{t("config.channels.setupStepModel")}</li>
+                                            </ol>
+                                            <button type="button" className={`${grokPrimary} mt-4`} onClick={addChannel}><Plus className="size-3.5" />{t("config.channels.setupAction")}</button>
                                         </div>
                                     </div>
-                                ) : null}
-                                <div className="space-y-2">
+                                </div>
+                            ) : (
+                                <div className={`${configCard} divide-y divide-[#E6E8EE] dark:divide-stone-800`}>
                                     {config.channels.map((channel) => (
-                                        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
+                                        <div key={channel.id} className="flex items-center justify-between gap-3 px-4 py-3">
                                             <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
-                                                <div className="mt-1 truncate text-xs text-stone-500">
+                                                <div className="truncate text-sm font-medium leading-5 text-[#111827] dark:text-stone-100">{channel.name || t("config.channels.unnamed")}</div>
+                                                <div className="mt-1 truncate text-[13px] leading-5 text-[#6B7280]">
                                                     {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
                                                 </div>
                                             </div>
-                                            <div className="flex shrink-0 gap-2">
-                                                <Button size="small" type="text" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
-                                                    {t("common.edit")}
-                                                </Button>
-                                                <Button size="small" type="text" danger aria-label={t("common.delete")} title={t("common.delete")} icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
+                                            <div className="flex shrink-0 items-center gap-1">
+                                                <button type="button" className={grokSecondary} onClick={() => setEditingChannelId(channel.id)}><Pencil className="size-3.5" />{t("common.edit")}</button>
+                                                <button type="button" className="grid size-9 place-items-center rounded-full text-[#9CA3AF] hover:bg-[#F3F4F6] hover:text-[#111827] dark:hover:bg-white/10 dark:hover:text-stone-100" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => deleteChannel(channel.id)}><Trash2 className="size-4" /></button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        ),
-                    },
-                    {
-                        key: "local-proxy",
-                        label: t("config.tabs.localProxy"),
-                        children: <ConfigLocalProxy />,
-                    },
-                    {
-                        key: "preferences",
-                        label: t("config.tabs.preferences"),
-                        children: (
-                            <Form className="@container/preferences" layout="vertical" requiredMark={false}>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.defaultModels")}</div>
-                                <div className="mb-4 grid gap-4 @min-[560px]/preferences:grid-cols-2 @min-[1200px]/preferences:grid-cols-4">
-                                    {modelGroups.map((group) => (
-                                        <Form.Item key={group.modelKey} label={t(group.labelKey)} className="mb-0">
-                                            <ModelPicker className="workspace-control !rounded-lg !text-[13px]" config={config} value={config[group.modelKey]} onChange={(model) => updateConfig(group.modelKey, model)} capability={group.capability} fullWidth />
-                                        </Form.Item>
-                                    ))}
+                            )}
+                        </div>
+                    ) : null}
+                    {activeTab === "local-proxy" && isAdmin ? <ConfigLocalProxy /> : null}
+                    {activeTab === "preferences" ? (
+                        <div className="space-y-6">
+                            <section>
+                                <div className={configGroupLabel}>{t("config.preferences.defaultModels")}</div>
+                                <div className={configCardBody}>
+                                    <div className="grid items-start gap-4 sm:grid-cols-2">
+                                        {modelGroups.map((group) => (
+                                            <div key={group.modelKey}>
+                                                <label className={configFieldLabel}>{t(group.labelKey)}</label>
+                                                <ModelPicker className="!h-9 !rounded-full !text-[13px]" config={config} value={config[group.modelKey]} onChange={(model) => updateConfig(group.modelKey, model)} capability={group.capability} fullWidth />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.generation")}</div>
-                                <div className="grid gap-4 @min-[560px]/preferences:grid-cols-2 @min-[1200px]/preferences:grid-cols-4">
-                                    <Form.Item label={t("config.preferences.canvasImageCount")} extra={t("config.preferences.canvasImageCountDescription")} className="mb-4">
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            max={15}
-                                            value={config.canvasImageCount}
-                                            onChange={(event) => updateConfig("canvasImageCount", event.target.value)}
-                                            onBlur={(event) => updateConfig("canvasImageCount", normalizeImageCount(event.target.value))}
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioVoice")} className="mb-4">
-                                        <Select value={config.audioVoice} options={audioVoiceOptions} onChange={(value) => updateConfig("audioVoice", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioFormat")} className="mb-4">
-                                        <Select value={config.audioFormat} options={audioFormatOptions} onChange={(value) => updateConfig("audioFormat", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioSpeed")} className="mb-4">
-                                        <Input
-                                            type="number"
-                                            min={0.25}
-                                            max={4}
-                                            step={0.05}
-                                            value={config.audioSpeed}
-                                            onChange={(event) => updateConfig("audioSpeed", event.target.value)}
-                                            onBlur={(event) => updateConfig("audioSpeed", normalizeAudioSpeedValue(event.target.value))}
-                                        />
-                                    </Form.Item>
-                                </div>
-                                <Form.Item label={t("config.preferences.audioInstructions")} className="mb-4 max-w-[640px]">
-                                    <Input.TextArea rows={2} value={config.audioInstructions} placeholder={t("config.preferences.audioInstructionsPlaceholder")} onChange={(event) => updateConfig("audioInstructions", event.target.value)} />
-                                </Form.Item>
-                                <Form.Item label={t("config.preferences.systemPrompt")} className="mb-0 max-w-[640px]">
-                                    <Input.TextArea rows={4} value={config.systemPrompt} placeholder={t("config.preferences.systemPromptPlaceholder")} onChange={(event) => updateConfig("systemPrompt", event.target.value)} />
-                                </Form.Item>
-                            </Form>
-                        ),
-                    },
-                    {
-                        key: "prompt-sources",
-                        label: t("config.tabs.promptSources"),
-                        children: <ConfigPromptSources />,
-                    },
-                    {
-                        key: "webdav",
-                        label: "WebDAV",
-                        children: (
-                            <Form className="max-w-[800px]" layout="vertical" requiredMark={false}>
-                                <section className="rounded-lg border border-stone-200 p-3 dark:border-stone-800">
-                                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                            </section>
+                            <section>
+                                <div className={configGroupLabel}>{t("config.preferences.generation")}</div>
+                                <div className={`${configCardBody} space-y-4`}>
+                                    <div className="grid items-start gap-4 sm:grid-cols-2">
                                         <div>
-                                            <div className="flex items-center gap-2 text-sm font-semibold">
-                                                <Cloud className="size-4" />
-                                                {t("config.webdav.title")}
-                                            </div>
-                                            <div className="mt-1 text-xs text-stone-500">{t("config.webdav.description")}</div>
+                                            <label className={configFieldLabel}>{t("config.preferences.canvasImageCount")}</label>
+                                            <Input className={configInput} type="number" min={1} max={15} value={config.canvasImageCount} onChange={(event) => updateConfig("canvasImageCount", event.target.value)} onBlur={(event) => updateConfig("canvasImageCount", normalizeImageCount(event.target.value))} />
+                                            <p className={configHint}>{t("config.preferences.canvasImageCountDescription")}</p>
                                         </div>
-                                        <div className="text-xs text-stone-500">{isAdmin && webdav.lastSyncedAt ? t("config.webdav.lastSynced", { time: formatWebdavTime(webdav.lastSyncedAt, locale) }) : t("config.webdav.neverSynced")}</div>
+                                        <div>
+                                            <label className={configFieldLabel}>{t("config.preferences.audioVoice")}</label>
+                                            <Select className={configSelect} value={config.audioVoice} options={audioVoiceOptions} onChange={(value) => updateConfig("audioVoice", value)} />
+                                        </div>
+                                        <div>
+                                            <label className={configFieldLabel}>{t("config.preferences.audioFormat")}</label>
+                                            <Select className={configSelect} value={config.audioFormat} options={audioFormatOptions} onChange={(value) => updateConfig("audioFormat", value)} />
+                                        </div>
+                                        <div>
+                                            <label className={configFieldLabel}>{t("config.preferences.audioSpeed")}</label>
+                                            <Input className={configInput} type="number" min={0.25} max={4} step={0.05} value={config.audioSpeed} onChange={(event) => updateConfig("audioSpeed", event.target.value)} onBlur={(event) => updateConfig("audioSpeed", normalizeAudioSpeedValue(event.target.value))} />
+                                        </div>
                                     </div>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <Form.Item label={t("config.webdav.url")} className="mb-4">
-                                            <Input disabled={!isAdmin} value={visibleWebdav.url} placeholder="https://nas.example.com/webdav" onChange={(event) => updateWebdavConfig("url", event.target.value)} />
-                                        </Form.Item>
-                                        <Form.Item label={t("config.webdav.directory")} extra={t("config.webdav.directoryDescription", { manifest: WEBDAV_MANIFEST_FILE_NAME })} className="mb-4">
-                                            <Input disabled={!isAdmin} value={visibleWebdav.directory} placeholder="infinite-canvas" onChange={(event) => updateWebdavConfig("directory", event.target.value)} />
-                                        </Form.Item>
-                                        <Form.Item label={t("config.webdav.username")} className="mb-0">
-                                            <Input disabled={!isAdmin} value={visibleWebdav.username} autoComplete="username" onChange={(event) => updateWebdavConfig("username", event.target.value)} />
-                                        </Form.Item>
-                                        <Form.Item label={t("config.webdav.password")} className="mb-0">
-                                            <Input.Password disabled={!isAdmin} value={visibleWebdav.password} autoComplete="current-password" onChange={(event) => updateWebdavConfig("password", event.target.value)} />
-                                        </Form.Item>
+                                    <div className="max-w-[640px]">
+                                        <label className={configFieldLabel}>{t("config.preferences.audioInstructions")}</label>
+                                        <Input.TextArea className={configTextArea} rows={2} value={config.audioInstructions} placeholder={t("config.preferences.audioInstructionsPlaceholder")} onChange={(event) => updateConfig("audioInstructions", event.target.value)} />
                                     </div>
-                                    {!isAdmin ? <div className="mt-3 text-xs text-stone-500">{t("config.webdav.adminOnly")}</div> : null}
-                                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                                        <Button icon={<Wifi className="size-4" />} disabled={!isAdmin || !webdavReady || syncingWebdav} loading={testingWebdav} onClick={() => void testWebdav()}>
-                                            {t("config.webdav.test")}
-                                        </Button>
-                                        <Button type="primary" icon={<RefreshCw className="size-4" />} disabled={!isAdmin || !webdavReady || testingWebdav} loading={syncingWebdav} onClick={() => void syncWebdav()}>
-                                            {t(syncingWebdav ? "config.webdav.syncing" : "config.webdav.syncNow")}
-                                        </Button>
-                                        {webdavSyncStatus ? <span className="text-xs text-stone-500">{syncStageLabel(webdavSyncStatus, t)}</span> : null}
+                                    <div className="max-w-[640px]">
+                                        <label className={configFieldLabel}>{t("config.preferences.systemPrompt")}</label>
+                                        <Input.TextArea className={configTextArea} rows={4} value={config.systemPrompt} placeholder={t("config.preferences.systemPromptPlaceholder")} onChange={(event) => updateConfig("systemPrompt", event.target.value)} />
                                     </div>
-                                    {syncingWebdav || webdavSyncStatus ? <WebdavProgressGrid progress={webdavDomainProgress} t={t} /> : null}
-                                </section>
-                            </Form>
-                        ),
-                    },
-                    {
-                        key: "local-storage",
-                        label: t("config.tabs.localStorage"),
-                        children: <ConfigLocalStorage active={activeTab === "local-storage"} />,
-                    },
-                ]}
-            />
+                                </div>
+                            </section>
+                        </div>
+                    ) : null}
+                    {activeTab === "prompt-sources" && isAdmin ? <ConfigPromptSources /> : null}
+                    {activeTab === "webdav" && isAdmin ? <div className={configCardBody}><p className="text-[13px] leading-5 text-[#6B7280]">旧浏览器 WebDAV 同步已停用，原配置和远端文件保持封存。部署侧备份恢复通过维护工具执行。</p></div> : null}
+                    {activeTab === "local-storage" ? <ConfigLocalStorage active={activeTab === "local-storage"} /> : null}
+                </div>
+            </div>
             {showDoneButton ? (
                 <div className="mt-4 flex justify-end">
-                    <Button type="primary" onClick={finishConfig}>
-                        {t("common.done")}
-                    </Button>
+                    <button type="button" className={grokPrimary} onClick={() => void finishConfig()}>{t("common.done")}</button>
                 </div>
             ) : null}
             <ChannelEditorDrawer open={Boolean(editingChannel)} channel={editingChannel} onSave={saveChannel} onClose={() => setEditingChannelId("")} />
@@ -399,17 +260,13 @@ export function AppConfigModal() {
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
     return (
         <Modal
-            title={
-                <div>
-                    <div className="text-base font-semibold">{t("config.title")}</div>
-                    <div className="mt-1 text-[13px] leading-5 font-normal text-stone-500">{t("config.modalDescription")}</div>
-                </div>
-            }
+            title={<div className="text-sm font-medium leading-5">{t("config.title")}</div>}
             open={isConfigOpen}
-            width={980}
+            width={1080}
             centered
             onCancel={() => setConfigDialogOpen(false)}
-            styles={{ body: { maxHeight: "72vh", overflowY: "auto", paddingRight: 12 } }}
+            classNames={{ container: "!border !border-white !bg-[#FBFCFD] !shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:!border-stone-800 dark:!bg-stone-950", header: "!border-0 !bg-transparent", body: "!bg-transparent" }}
+            styles={{ body: { maxHeight: "calc(100vh - 180px)", overflowY: "auto", paddingRight: 12 } }}
             footer={null}
         >
             <AppConfigPanel showDoneButton initialTab={configTab} />

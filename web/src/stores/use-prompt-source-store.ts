@@ -1,74 +1,27 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { requireAdminAction, isCurrentUserAdmin } from "@/lib/permissions";
+import { createPromptSource, type PromptSource } from "@/services/api/prompt-source-presets";
+import { managementRequest } from "@/services/api/management";
+import { useUserStore } from "./use-user-store";
 
-import { requireAdminAction } from "@/lib/permissions";
-import { DEFAULT_PROMPT_SOURCES, createPromptSource, type PromptSource } from "@/services/api/prompt-source-presets";
-
-export type PromptSourceSchedule = {
-    intervalMinutes: number;
-    lastFetchedAt: string;
+export type PromptSourceSchedule = { intervalMinutes:number;lastFetchedAt:string };
+export const PROMPT_SOURCE_INTERVALS = [0,30,60,360,1440];
+const initial={sources:[] as PromptSource[],schedule:{intervalMinutes:30,lastFetchedAt:""},loaded:false};
+type SourceStore=typeof initial & {
+    load:()=>Promise<void>;addSource:()=>PromptSource;saveSource:(source:PromptSource)=>Promise<void>;removeSource:(id:string)=>Promise<void>;
+    toggleSource:(id:string,enabled:boolean)=>Promise<void>;updateSchedule:(intervalMinutes:number)=>Promise<void>;
 };
-
-const PROMPT_SOURCE_STORE_KEY = "infinite-canvas:prompt_source_store_v2";
-
-const defaultSchedule: PromptSourceSchedule = {
-    intervalMinutes: 30,
-    lastFetchedAt: "",
-};
-
-export const PROMPT_SOURCE_INTERVALS = [0, 30, 60, 360, 1440];
-
-type PromptSourceStore = {
-    sources: PromptSource[];
-    schedule: PromptSourceSchedule;
-    addSource: () => PromptSource;
-    saveSource: (source: PromptSource) => void;
-    removeSource: (id: string) => void;
-    toggleSource: (id: string, enabled: boolean) => void;
-    updateSchedule: <K extends keyof PromptSourceSchedule>(key: K, value: PromptSourceSchedule[K]) => void;
-};
-
-export const usePromptSourceStore = create<PromptSourceStore>()(
-    persist(
-        (set) => ({
-            sources: DEFAULT_PROMPT_SOURCES,
-            schedule: defaultSchedule,
-            addSource: () => {
-                requireAdminAction();
-                return createPromptSource();
-            },
-            saveSource: (source) => {
-                requireAdminAction();
-                set((state) => ({
-                    sources: state.sources.some((item) => item.id === source.id)
-                        ? state.sources.map((item) => (item.id === source.id && !item.builtIn ? createPromptSource(source) : item))
-                        : [...state.sources, createPromptSource(source)],
-                }));
-            },
-            removeSource: (id) => {
-                requireAdminAction();
-                set((state) => ({ sources: state.sources.filter((item) => item.id !== id || item.builtIn) }));
-            },
-            toggleSource: (id, enabled) => {
-                requireAdminAction();
-                set((state) => ({ sources: state.sources.map((item) => (item.id === id ? { ...item, enabled } : item)) }));
-            },
-            updateSchedule: (key, value) => {
-                requireAdminAction();
-                set((state) => ({ schedule: { ...state.schedule, [key]: value } }));
-            },
-        }),
-        {
-            name: PROMPT_SOURCE_STORE_KEY,
-            partialize: (state) => ({ sources: state.sources, schedule: state.schedule }),
-            merge: (persisted, current) => {
-                const persistedState = (persisted || {}) as Partial<PromptSourceStore>;
-                const savedSources = Array.isArray(persistedState.sources) ? persistedState.sources : [];
-                const enabledById = new Map(savedSources.map((source) => [source.id, source.enabled]));
-                const builtIn = DEFAULT_PROMPT_SOURCES.map((source) => ({ ...source, enabled: enabledById.get(source.id) ?? source.enabled }));
-                const custom = savedSources.filter((source) => !source.builtIn).map((source) => createPromptSource(source));
-                return { ...current, sources: [...builtIn, ...custom], schedule: { ...defaultSchedule, ...(persistedState.schedule || {}) } };
-            },
-        },
-    ),
-);
+export const usePromptSourceStore=create<SourceStore>()((set,get)=>({
+    ...initial,
+    load:async()=>{
+        const identity=useUserStore.getState().user?.sessionId;if(!identity)return;
+        const data=isCurrentUserAdmin()?await managementRequest<{sources:PromptSource[];schedule:PromptSourceSchedule}>("admin/inspiration-sources"):{sources:(await managementRequest<{sources:{id:string;name:string}[]}>("inspiration-sources")).sources.map(source=>({...source,url:"",homepage:"",builtIn:false,enabled:true})),schedule:initial.schedule};
+        if(useUserStore.getState().user?.sessionId===identity)set({...data,loaded:true});
+    },
+    addSource:()=>{requireAdminAction();return createPromptSource({enabled:false});},
+    saveSource:async source=>{requireAdminAction();const identity=useUserStore.getState().user?.sessionId,existing=get().sources.some(item=>item.id===source.id);await managementRequest(`admin/inspiration-sources${existing?"/"+encodeURIComponent(source.id):""}`,existing?"PUT":"POST",source);if(useUserStore.getState().user?.sessionId===identity)await get().load();},
+    removeSource:async id=>{requireAdminAction();const identity=useUserStore.getState().user?.sessionId;await managementRequest(`admin/inspiration-sources/${encodeURIComponent(id)}`,"DELETE");if(useUserStore.getState().user?.sessionId===identity)await get().load();},
+    toggleSource:async(id,enabled)=>{const source=get().sources.find(item=>item.id===id);if(!source)throw new Error("来源不存在");await get().saveSource({...source,enabled});},
+    updateSchedule:async intervalMinutes=>{requireAdminAction();const identity=useUserStore.getState().user?.sessionId;const {schedule}=await managementRequest<{schedule:PromptSourceSchedule}>("admin/inspiration-sources/schedule","PUT",{intervalMinutes});if(useUserStore.getState().user?.sessionId===identity)set({schedule});},
+}));
+useUserStore.subscribe((state,previous)=>{if(state.user?.sessionId!==previous.user?.sessionId || state.user?.role!==previous.user?.role)usePromptSourceStore.setState(initial);});

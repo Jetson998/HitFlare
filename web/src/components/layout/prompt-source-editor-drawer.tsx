@@ -5,10 +5,11 @@ import { useTranslation } from "react-i18next";
 import { requireAdminAction, useIsAdmin } from "@/lib/permissions";
 import type { PromptSource } from "@/services/api/prompt-source-presets";
 
-export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { open: boolean; source: PromptSource | null; onSave: (source: PromptSource) => void; onClose: () => void }) {
+export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { open: boolean; source: PromptSource | null; onSave: (source: PromptSource) => Promise<void>; onClose: () => void }) {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const isAdmin = useIsAdmin();
+    const [saving,setSaving]=useState(false);
     const [draft, setDraft] = useState<PromptSource | null>(source);
 
     useEffect(() => {
@@ -19,7 +20,7 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
 
     const patch = (value: Partial<PromptSource>) => setDraft((current) => (current ? { ...current, ...value } : current));
 
-    const save = () => {
+    const save = async () => {
         try {
             requireAdminAction();
         } catch (error) {
@@ -31,8 +32,8 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
         if (!name) return message.warning(t("config.promptSources.editor.nameRequired"));
         if (!isHttpUrl(url)) return message.warning(t("config.promptSources.editor.invalidUrl"));
         if (draft.homepage.trim() && !isHttpUrl(draft.homepage.trim())) return message.warning(t("config.promptSources.editor.invalidHomepage"));
-        onSave({ ...draft, name, url, homepage: draft.homepage.trim(), builtIn: false });
-        onClose();
+        setSaving(true);
+        try {await onSave({ ...draft, name, url, homepage: draft.homepage.trim(), builtIn: false });onClose();}catch(error){message.error(error instanceof Error?error.message:"来源保存失败，请保留草稿后重试");}finally{setSaving(false);}
     };
 
     return (
@@ -45,7 +46,7 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
             extra={
                 <Space>
                     <Button onClick={onClose}>{t("common.cancel")}</Button>
-                    <Button type="primary" disabled={!isAdmin} onClick={save}>
+                    <Button type="primary" disabled={!isAdmin} loading={saving} onClick={()=>void save()}>
                         {t("common.save")}
                     </Button>
                 </Space>
@@ -65,7 +66,7 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
                     <Input disabled={!isAdmin} value={draft.homepage} onChange={(event) => patch({ homepage: event.target.value })} placeholder="https://example.com" />
                 </label>
                 <div className="flex items-center justify-between border-y border-stone-200 py-3 dark:border-stone-800">
-                    <span className="text-sm font-medium">{t("config.promptSources.editor.enabled")}</span>
+                    <span className="text-sm font-medium">发布到灵感列表</span>
                     <Switch checked={draft.enabled} disabled={!isAdmin} onChange={(enabled) => patch({ enabled })} />
                 </div>
                 <div>

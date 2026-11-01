@@ -45,6 +45,7 @@ export type CanvasNodeText = {
 };
 
 export type CanvasNodeMetadata = {
+    assetId?: string;
     content?: string;
     composerContent?: string;
     prompt?: string;

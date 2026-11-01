@@ -1,3 +1,5 @@
+import {testKeyring} from "../serviceization-fixtures.mjs";
+import {createWorkspaceStore} from "../workspace-store.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -10,6 +12,7 @@ import { createReversePromptService } from "./routes.mjs";
 import { createReversePromptStore } from "./storage.mjs";
 import { createReversePromptModel, extractObservationPreview, makeAnalysis, parseObservation, ReversePromptModelError, validateProviderUrl } from "./model.mjs";
 import { VISUAL_ANALYSIS_SYSTEM_PROMPT } from "../../shared/visual-analysis-rules.mjs";
+import { restoreMigrationBackup } from "../storage-safety.mjs";
 
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l1sAAAAASUVORK5CYII=", "base64");
 const config = { baseUrl: "https://provider.example/v1", apiKey: "request-only-private-key", apiFormat: "openai", model: "test-model", modelValue: "channel::test-model", modelLabel: "test-model（测试渠道）", systemPrompt: "", reasoningEffort: "auto" };
@@ -41,20 +44,23 @@ test("HTTP/SSE disconnect preserves a paid job, deduplicates creation, keeps dra
             refine(analysisValue, onText, _signal, onDiagnostics) { assert.equal(analysisValue.reversePromptDraft.text, observation.reversePromptDraft.text); call.refineCount++; call.onText = onText; call.refineDiagnostics = onDiagnostics; onDiagnostics?.({ phase: "refine", outputChars: 8, endReason: "completed-event" }); return refinement.promise; },
         };
     };
-    const auth = { userFromRequest: req => req.headers.cookie ? { id: req.headers.cookie, status: "active" } : null };
-    const service = await createReversePromptService({ dataDir, auth, modelFactory: factory });
+    const contextFromRequest = req => req.headers.cookie ? { id: req.headers.cookie, sessionId: req.headers.cookie, status: "active" } : null;
+    const auth = { userFromRequest: contextFromRequest, contextFromRequest, onLifecycle: () => () => {}, watchSession: () => {} };
+    const workspace=await createWorkspaceStore(dataDir,testKeyring);
+    workspace.saveChannel("A",{id:"channel",name:"测试渠道",baseUrl:config.baseUrl,apiKey:config.apiKey,apiFormat:config.apiFormat,models:[{name:config.model,capability:"text"}]});
+    const service = await createReversePromptService({ dataDir, auth, workspace, modelFactory: factory });
     const server = createServer(async (req, res) => {
         try { if (await service.handle(req, res, new URL(req.url, "http://localhost"), json) === false) json(res, 404, {}); }
         catch (error) { json(res, error.status || 500, { error: error.status ? error.message : "服务失败" }); }
     });
     await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
     const base = `http://127.0.0.1:${server.address().port}`;
-    t.after(async () => { for (const call of calls) { call.analysis.resolve(JSON.stringify(observation)); call.refinement.resolve("清晰最终提示词。"); } await service.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await rm(dataDir, { recursive: true, force: true }); });
+    t.after(async () => { for (const call of calls) { call.analysis.resolve(JSON.stringify(observation)); call.refinement.resolve("清晰最终提示词。"); } await service.close(); workspace.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await rm(dataDir, { recursive: true, force: true }); });
     async function api(path, method = "GET", body, owner = "A") {
         const response = await fetch(`${base}/api/reverse-prompt/${path}`, { method, headers: { cookie: owner, "x-hitflare-user": owner, ...(body && !(body instanceof FormData) ? { "Content-Type": "application/json" } : {}) }, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined });
         return { status: response.status, body: await response.json() };
     }
-    function form(requestId) { const value = new FormData(); value.append("image", new Blob([png], { type: "image/png" }), "参考图.png"); value.append("request", JSON.stringify({ requestId, config })); return value; }
+    function form(requestId) { const value = new FormData(); value.append("image", new Blob([png], { type: "image/png" }), "参考图.png"); value.append("request", JSON.stringify({requestId,config:{channelId:"channel",model:config.model}})); return value; }
     assert.equal((await fetch(`${base}/api/reverse-prompt/tasks`)).status, 401);
     const invalid = await fetch(`${base}/api/reverse-prompt/tasks`, { method: "POST", headers: { cookie: "A", "x-hitflare-user": "B" }, body: form(randomUUID()) });
     assert.equal(invalid.status, 403);
@@ -64,8 +70,8 @@ test("HTTP/SSE disconnect preserves a paid job, deduplicates creation, keeps dra
     assert.equal((await api("tasks", "POST", form(requestId))).body.id, id);
     assert.equal(calls.length, 1);
     const conflicting = form(requestId);
-    conflicting.set("request", JSON.stringify({ requestId, config: { ...config, model: "another-model" } }));
-    assert.equal((await api("tasks", "POST", conflicting)).status, 409);
+    conflicting.set("request", JSON.stringify({ requestId, config:{channelId:"channel",model:"another-model"} }));
+    assert.equal((await api("tasks", "POST", conflicting)).status, 403);
     assert.equal(calls.length, 1);
     assert.equal((await api(`tasks/${id}`, "GET", undefined, "B")).status, 404);
     assert.equal((await api(`tasks/${id}/image`, "GET", undefined, "B")).status, 404);
@@ -107,7 +113,7 @@ test("HTTP/SSE disconnect preserves a paid job, deduplicates creation, keeps dra
     assert.equal(done.partialText, undefined);
     assert.equal((await api(`tasks?requestId=${requestId}`)).body.task.id, id);
     assert.equal((await api("tasks?active=true")).body.tasks.length, 0);
-    assert.equal((await api(`tasks/${id}/retry`, "POST", { requestId: randomUUID(), config })).status, 409);
+    assert.equal((await api(`tasks/${id}/retry`, "POST", { requestId: randomUUID(), config:{channelId:"channel",model:config.model} })).status, 409);
     const cancelled = (await api("tasks", "POST", form(randomUUID()))).body;
     calls[1].analysis.resolve(JSON.stringify(observation)); await settle(); calls[1].onText("停止前片段");
     const stopped = (await api(`tasks/${cancelled.id}/stop`, "POST")).body;
@@ -115,9 +121,9 @@ test("HTTP/SSE disconnect preserves a paid job, deduplicates creation, keeps dra
     calls[1].refinement.resolve("停止后晚到结果"); await settle();
     assert.equal((await api(`tasks/${cancelled.id}`)).body.status, "stopped");
     const retryId = randomUUID();
-    const retry = (await api(`tasks/${cancelled.id}/retry`, "POST", { requestId: retryId, config })).body;
+    const retry = (await api(`tasks/${cancelled.id}/retry`, "POST", { requestId: retryId, config:{channelId:"channel",model:config.model} })).body;
     assert.notEqual(retry.id, cancelled.id);
-    assert.equal((await api(`tasks/${cancelled.id}/retry`, "POST", { requestId: retryId, config })).body.id, retry.id);
+    assert.equal((await api(`tasks/${cancelled.id}/retry`, "POST", { requestId: retryId, config:{channelId:"channel",model:config.model} })).body.id, retry.id);
     assert.equal(retry.retryOf, cancelled.id);
     assert.equal(calls.length, 3);
     calls[2].analysis.resolve(JSON.stringify(observation)); await settle(); calls[2].onText("失败前片段"); calls[2].refinement.reject(new Error(config.apiKey)); await settle();
@@ -211,6 +217,25 @@ test("unknown reverse-prompt database versions are refused without replacing sav
     }
 });
 
+test("known v1 reverse-prompt tasks migrate without replacing task identity or images", async t => {
+    const dir = await mkdtemp(join(tmpdir(), "hitflare-reverse-migrate-v1-"));
+    let store = await createReversePromptStore(dir);
+    const task = store.create("bill", { requestId: randomUUID(), inputHash: "old-input", modelValue: config.modelValue, modelLabel: config.modelLabel, apiFormat: "openai", imageName: "旧图.png", imageMime: "image/png", imageHash: createHash("sha256").update(png).digest("hex"), imageWidth: 1, imageHeight: 1, imageBytes: png }).state;
+    store.close(); store = undefined;
+    const db = new DatabaseSync(join(dir, "hitflare-reverse-prompt.sqlite"));
+    db.exec("ALTER TABLE reverse_prompt_tasks DROP COLUMN tenant_id; PRAGMA user_version=1;"); db.close();
+    store = await createReversePromptStore(dir);
+    assert.equal(store.get("bill", task.id).source.name, "旧图.png");
+    assert.deepEqual(store.image("bill", task.id).bytes, png);
+    const current = new DatabaseSync(join(dir, "hitflare-reverse-prompt.sqlite"), { readOnly: true });
+    assert.equal(current.prepare("PRAGMA user_version").get().user_version, 2);
+    assert.equal(current.prepare("SELECT tenant_id FROM reverse_prompt_tasks WHERE id=?").get(task.id).tenant_id, "default");
+    current.close();
+    const restored = new DatabaseSync(await restoreMigrationBackup(join(dir, "schema-backups", "hitflare-reverse-prompt.sqlite-v1-to-v2"), join(dir, "restored")), { readOnly: true });
+    assert.equal(restored.prepare("PRAGMA user_version").get().user_version, 1); restored.close();
+    store.close(); await rm(dir, { recursive: true, force: true });
+});
+
 test("storage restart is interrupted, snapshots omit image bytes, pagination survives task updates and never drops history", async t => {
     const dir = await mkdtemp(join(tmpdir(), "hitflare-reverse-store-"));
     let store = await createReversePromptStore(dir);
@@ -242,7 +267,7 @@ test("diagnostics storage has its own version and refuses unknown diagnostic pay
     store.close(); store = undefined;
     const path = join(dir, "hitflare-reverse-prompt.sqlite");
     const db = new DatabaseSync(path);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 1);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 2);
     assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reverse_prompt_task_diagnostics'").get().name, "reverse_prompt_task_diagnostics");
     db.prepare("UPDATE reverse_prompt_task_diagnostics SET diagnostics_json=? WHERE task_id=?").run(JSON.stringify({ version: 99, modelCallCount: 1 }), created.id);
     db.close();
@@ -263,7 +288,7 @@ test("unknown observation preview versions are refused without overwriting the s
     t.after(async () => { db.close(); await rm(dir, { recursive: true, force: true }); });
     await assert.rejects(createReversePromptStore(dir), /task data is damaged/);
     assert.equal(db.prepare("SELECT preview_json FROM reverse_prompt_task_previews WHERE task_id=?").get(task.id).preview_json, raw);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 1);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 2);
 });
 
 test("model transport sends image once, handles split SSE, rejects incomplete output and hides upstream secrets", async t => {
@@ -405,6 +430,8 @@ test("observation validation exposes safe failure codes and paths", () => {
     assert.throws(() => parseObservation(JSON.stringify({ ...observation, facts: [...observation.facts, { ...observation.facts[0], id: "fact-1" }] })), error => error.code === "OBSERVATION_REFERENCE_INVALID" && error.details.issues.some(issue => issue.code === "duplicate_fact_id"));
     assert.throws(() => parseObservation(JSON.stringify({ ...observation, reversePromptDraft: { ...observation.reversePromptDraft, factIds: ["missing"] } })), error => error.code === "OBSERVATION_REFERENCE_INVALID" && error.details.issues.some(issue => issue.path === "reversePromptDraft.factIds.0"));
     assert.throws(() => parseObservation(JSON.stringify({ ...observation, facts: observation.facts.map(fact => fact.dimension === "subject" ? { ...fact, status: "uncertain" } : fact) })), error => error.code === "OBSERVATION_REFERENCE_INVALID" && error.details.issues.some(issue => issue.code === "uncertainty_note_required"));
+    const withoutMedium = parseObservation(JSON.stringify({ ...observation, facts: observation.facts.filter(fact => fact.dimension !== "medium") }));
+    assert.equal(withoutMedium.facts.some(fact => fact.dimension === "medium" && fact.description === observation.styleProfile.medium), true);
 });
 
 test("observation previews follow nested fields, preserve escaped strings and never replace complete validation", () => {

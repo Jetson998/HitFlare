@@ -3,21 +3,32 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { InputError } from "../catalog.mjs";
+import { DEFAULT_TENANT_ID, assertColumns, backupBeforeMigration, hasUserTables, transaction } from "../storage-safety.mjs";
 
 export const STORAGE_VERSION = 1;
+export const DATABASE_VERSION = 2;
 export const DIAGNOSTICS_VERSION = 1;
+const REVERSE_SCHEMA_V1 = {
+        reverse_prompt_task_diagnostics: ["task_id", "error_code", "failure_stage", "diagnostics_json"],
+        reverse_prompt_task_previews: ["task_id", "preview_json"],
+        reverse_prompt_tasks: ["id", "user_id", "request_id", "input_hash", "retry_of", "status", "stage", "model_value", "model_label", "api_format", "channel_id", "image_name", "image_mime", "image_hash", "image_width", "image_height", "image_bytes", "analysis_json", "prompt_json", "partial_text", "error", "revision", "created_at", "started_at", "updated_at", "finished_at", "duration_ms"],
+    };
+export const REVERSE_SCHEMA = {...REVERSE_SCHEMA_V1,reverse_prompt_tasks:[...REVERSE_SCHEMA_V1.reverse_prompt_tasks,"tenant_id"]};
 const now = () => new Date().toISOString();
 
 export async function createReversePromptStore(dataDir) {
     await mkdir(dataDir, { recursive: true });
     const db = new DatabaseSync(join(dataDir, "hitflare-reverse-prompt.sqlite"));
     const version = db.prepare("PRAGMA user_version").get().user_version;
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-    if ((version !== 0 && version !== STORAGE_VERSION) || (version === 0 && tables.length)) {
-        db.close();
-        throw new Error("Reverse-prompt storage version is unknown; back up and migrate explicitly before starting.");
-    }
-    db.exec(`
+
+    try {
+        if (version === 1) {
+            assertColumns(db, REVERSE_SCHEMA_V1);
+            await backupBeforeMigration(db, dataDir, "hitflare-reverse-prompt.sqlite", version, DATABASE_VERSION);
+            transaction(db, () => db.exec(`ALTER TABLE reverse_prompt_tasks ADD COLUMN tenant_id TEXT NOT NULL DEFAULT '${DEFAULT_TENANT_ID}'; PRAGMA user_version=${DATABASE_VERSION};`));
+        } else if (version === DATABASE_VERSION) assertColumns(db, REVERSE_SCHEMA);
+        else if (version !== 0 || hasUserTables(db)) throw new Error("Reverse-prompt storage version is unknown; back up and migrate explicitly before starting.");
+        db.exec(`
         PRAGMA journal_mode = WAL;
         PRAGMA foreign_keys = ON;
         CREATE TABLE IF NOT EXISTS reverse_prompt_tasks (
@@ -48,6 +59,7 @@ export async function createReversePromptStore(dataDir) {
             updated_at TEXT NOT NULL,
             finished_at TEXT,
             duration_ms INTEGER,
+            tenant_id TEXT NOT NULL DEFAULT 'default',
             UNIQUE(user_id, request_id)
         );
         CREATE TABLE IF NOT EXISTS reverse_prompt_task_diagnostics (
@@ -63,10 +75,11 @@ export async function createReversePromptStore(dataDir) {
             FOREIGN KEY(task_id) REFERENCES reverse_prompt_tasks(id) ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS reverse_prompt_owner_created ON reverse_prompt_tasks(user_id, created_at DESC, id DESC);
-        PRAGMA user_version = ${STORAGE_VERSION};
-    `);
+        PRAGMA user_version = ${DATABASE_VERSION};
+        `);
+    } catch (error) { db.close(); throw error; }
 
-    const metadataColumns = "t.id,t.user_id,t.request_id,t.input_hash,t.retry_of,t.status,t.stage,t.model_value,t.model_label,t.api_format,t.channel_id,t.image_name,t.image_mime,t.image_hash,t.image_width,t.image_height,length(t.image_bytes) AS image_size,t.analysis_json,t.prompt_json,t.partial_text,t.error,d.error_code,d.failure_stage,d.diagnostics_json,p.preview_json,t.revision,t.created_at,t.started_at,t.updated_at,t.finished_at,t.duration_ms";
+    const metadataColumns = "t.id,t.user_id,t.tenant_id,t.request_id,t.input_hash,t.retry_of,t.status,t.stage,t.model_value,t.model_label,t.api_format,t.channel_id,t.image_name,t.image_mime,t.image_hash,t.image_width,t.image_height,length(t.image_bytes) AS image_size,t.analysis_json,t.prompt_json,t.partial_text,t.error,d.error_code,d.failure_stage,d.diagnostics_json,p.preview_json,t.revision,t.created_at,t.started_at,t.updated_at,t.finished_at,t.duration_ms";
     function decode(row) {
         let analysis = null;
         let prompt = null;
@@ -120,13 +133,36 @@ export async function createReversePromptStore(dataDir) {
         };
     }
 
+    const callDiagnosticKeys = ["phase", "reasoningEffort", "requestStartedAt", "responseHeadersAt", "firstTextAt", "lastTextAt", "previewStyleAt", "previewPromptAt", "completionEventAt", "readEndedAt", "requestFinishedAt", "requestMs", "responseHeadersMs", "firstTextMs", "lastTextMs", "previewStyleMs", "previewPromptMs", "completionEventMs", "readEndedMs", "readMs", "completionToReadEndMs", "parseMs", "schemaValidationMs", "referenceValidationMs", "outputValidationMs", "publishMs", "validationEndedAt", "publishedAt", "outputChars", "endReason", "eofSeen", "errorCode", "failureStage", "httpStatus"];
+    const diagnosticInputKeys = ["systemPromptChars", "userPromptChars", "outputSchemaChars", "imageBytes", "imageBase64Chars", "imageWidth", "imageHeight"];
+    const diagnosticUsageKeys = ["inputTokens", "outputTokens", "totalTokens", "cachedTokens", "reasoningTokens"];
+    function pick(source, keys) {
+        if (!source || typeof source !== "object") return undefined;
+        const picked = {};
+        for (const key of keys) if (source[key] !== undefined) picked[key] = source[key];
+        return picked;
+    }
+    function clientDiagnostics(value) {
+        if (!value || value.version !== 1) return undefined;
+        const call = item => {
+            const picked = pick(item, callDiagnosticKeys);
+            if (!picked) return undefined;
+            if (item.input) picked.input = pick(item.input, diagnosticInputKeys);
+            if (item.usage) picked.usage = pick(item.usage, diagnosticUsageKeys);
+            return picked;
+        };
+        return { version: 1, modelCallCount: Number.isInteger(value.modelCallCount) ? value.modelCallCount : 0, ...(value.observe ? { observe: call(value.observe) } : {}), ...(value.refine ? { refine: call(value.refine) } : {}), ...(value.failure ? { failure: { issues: Array.isArray(value.failure.issues) ? value.failure.issues.filter(issue => issue && typeof issue.path === "string" && typeof issue.code === "string").map(issue => ({ path: issue.path, code: issue.code })) : undefined } } : {}) };
+    }
     function publicSnapshot(state) {
         const { imageBytes, inputHash, ...snapshot } = state;
+        if (snapshot.retryOf == null) delete snapshot.retryOf;
+        if (snapshot.diagnostics) snapshot.diagnostics = clientDiagnostics(snapshot.diagnostics);
+        if (snapshot.observationPreview && (snapshot.observationPreview.version !== 1 || typeof snapshot.observationPreview.promptText !== "string")) snapshot.observationPreview = null;
         return snapshot;
     }
 
     function row(userId, id) {
-        const value = db.prepare(`SELECT ${metadataColumns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.id=? AND t.user_id=?`).get(id, userId);
+        const value = db.prepare(`SELECT ${metadataColumns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.id=? AND t.user_id=? AND t.tenant_id=?`).get(id, userId, DEFAULT_TENANT_ID);
         if (!value) throw new InputError("反推任务不存在或无权访问", 404);
         return value;
     }
@@ -144,7 +180,7 @@ export async function createReversePromptStore(dataDir) {
             state.updatedAt = now();
             db.prepare(`UPDATE reverse_prompt_tasks SET
                 status=?, stage=?, analysis_json=?, prompt_json=?, partial_text=?, error=?, revision=?,
-                started_at=?, updated_at=?, finished_at=?, duration_ms=? WHERE id=? AND user_id=?`).run(
+                started_at=?, updated_at=?, finished_at=?, duration_ms=? WHERE id=? AND user_id=? AND tenant_id=?`).run(
                 state.status,
                 state.stage,
                 state.analysis ? JSON.stringify(state.analysis) : null,
@@ -158,6 +194,7 @@ export async function createReversePromptStore(dataDir) {
                 state.durationMs ?? null,
                 id,
                 userId,
+                DEFAULT_TENANT_ID,
             );
             db.prepare(`INSERT INTO reverse_prompt_task_diagnostics(task_id,error_code,failure_stage,diagnostics_json) VALUES (?,?,?,?)
                 ON CONFLICT(task_id) DO UPDATE SET error_code=excluded.error_code,failure_stage=excluded.failure_stage,diagnostics_json=excluded.diagnostics_json`).run(
@@ -218,10 +255,11 @@ export async function createReversePromptStore(dataDir) {
             durationMs: undefined,
         };
         db.prepare(`INSERT INTO reverse_prompt_tasks
-            (id,user_id,request_id,input_hash,retry_of,status,stage,model_value,model_label,api_format,channel_id,image_name,image_mime,image_hash,image_width,image_height,image_bytes,analysis_json,prompt_json,partial_text,error,revision,created_at,started_at,updated_at,finished_at,duration_ms)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+            (id,user_id,tenant_id,request_id,input_hash,retry_of,status,stage,model_value,model_label,api_format,channel_id,image_name,image_mime,image_hash,image_width,image_height,image_bytes,analysis_json,prompt_json,partial_text,error,revision,created_at,started_at,updated_at,finished_at,duration_ms)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
             state.id,
             state.userId,
+            DEFAULT_TENANT_ID,
             state.requestId,
             state.inputHash,
             state.retryOf || null,
@@ -252,37 +290,37 @@ export async function createReversePromptStore(dataDir) {
     }
 
     function byRequestId(userId, requestId) {
-        const value = db.prepare(`SELECT ${metadataColumns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.user_id=? AND t.request_id=?`).get(userId, requestId);
+        const value = db.prepare(`SELECT ${metadataColumns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.user_id=? AND t.tenant_id=? AND t.request_id=?`).get(userId, DEFAULT_TENANT_ID, requestId);
         return value ? decode(value) : null;
     }
 
     function list(userId, { limit = 20, cursor } = {}) {
         const position = decodeCursor(cursor);
-        const columns = "t.id,t.user_id,t.status,t.stage,t.model_value,t.model_label,t.created_at,t.started_at,t.updated_at,t.finished_at,t.duration_ms,t.revision,t.error,d.error_code,d.failure_stage,t.prompt_json,p.preview_json";
+        const columns = "t.id,t.user_id,t.tenant_id,t.status,t.stage,t.model_value,t.model_label,t.created_at,t.started_at,t.updated_at,t.finished_at,t.duration_ms,t.revision,t.error,d.error_code,d.failure_stage,t.prompt_json,p.preview_json";
         const values = position
-            ? db.prepare(`SELECT ${columns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.user_id=? AND (t.created_at < ? OR (t.created_at = ? AND t.id < ?)) ORDER BY t.created_at DESC, t.id DESC LIMIT ?`).all(userId, position.createdAt, position.createdAt, position.id, limit)
-            : db.prepare(`SELECT ${columns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.user_id=? ORDER BY t.created_at DESC, t.id DESC LIMIT ?`).all(userId, limit);
+            ? db.prepare(`SELECT ${columns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.user_id=? AND t.tenant_id=? AND (t.created_at < ? OR (t.created_at = ? AND t.id < ?)) ORDER BY t.created_at DESC, t.id DESC LIMIT ?`).all(userId, DEFAULT_TENANT_ID, position.createdAt, position.createdAt, position.id, limit)
+            : db.prepare(`SELECT ${columns} FROM reverse_prompt_tasks t LEFT JOIN reverse_prompt_task_diagnostics d ON d.task_id=t.id LEFT JOIN reverse_prompt_task_previews p ON p.task_id=t.id WHERE t.user_id=? AND t.tenant_id=? ORDER BY t.created_at DESC, t.id DESC LIMIT ?`).all(userId, DEFAULT_TENANT_ID, limit);
         const tasks = values.map(value => {
             const prompt = value.prompt_json ? JSON.parse(value.prompt_json) : null;
             const preview = value.preview_json ? JSON.parse(value.preview_json) : null;
-            return { id: value.id, userId: value.user_id, status: value.status, stage: value.stage, model: { value: value.model_value, label: value.model_label }, revision: value.revision, createdAt: value.created_at, startedAt: value.started_at, updatedAt: value.updated_at, finishedAt: value.finished_at, durationMs: value.duration_ms, error: value.error, errorCode: value.error_code || undefined, failureStage: value.failure_stage || undefined, text: prompt?.modelText || preview?.promptText || "" };
+            return { id: value.id, userId: value.user_id, tenantId: value.tenant_id, status: value.status, stage: value.stage, model: { value: value.model_value, label: value.model_label }, revision: value.revision, createdAt: value.created_at, startedAt: value.started_at, updatedAt: value.updated_at, finishedAt: value.finished_at, durationMs: value.duration_ms, error: value.error, errorCode: value.error_code || undefined, failureStage: value.failure_stage || undefined, text: prompt?.modelText || preview?.promptText || "" };
         });
         const last = values.at(-1);
         return { tasks, nextCursor: last ? encodeCursor({ createdAt: last.created_at, id: last.id }) : null };
     }
 
     function active(userId) {
-        return db.prepare("SELECT id FROM reverse_prompt_tasks WHERE user_id=? AND status IN ('queued','analyzing','refining') ORDER BY created_at DESC,id DESC").all(userId).map(value => publicSnapshot(get(userId, value.id)));
+        return db.prepare("SELECT id FROM reverse_prompt_tasks WHERE user_id=? AND tenant_id=? AND status IN ('queued','analyzing','refining') ORDER BY created_at DESC,id DESC").all(userId, DEFAULT_TENANT_ID).map(value => publicSnapshot(get(userId, value.id)));
     }
 
     function image(userId, id) {
-        const value = db.prepare("SELECT image_name,image_mime,image_bytes FROM reverse_prompt_tasks WHERE user_id=? AND id=?").get(userId, id);
+        const value = db.prepare("SELECT image_name,image_mime,image_bytes FROM reverse_prompt_tasks WHERE user_id=? AND tenant_id=? AND id=?").get(userId, DEFAULT_TENANT_ID, id);
         if (!value) throw new InputError("参考图片不存在或无权访问", 404);
         return { name: value.image_name, mime: value.image_mime, bytes: Buffer.from(value.image_bytes) };
     }
 
     function markInterrupted() {
-        const rows = db.prepare("SELECT id,user_id FROM reverse_prompt_tasks WHERE status IN ('queued','analyzing','refining')").all();
+        const rows = db.prepare("SELECT id,user_id FROM reverse_prompt_tasks WHERE tenant_id=? AND status IN ('queued','analyzing','refining')").all(DEFAULT_TENANT_ID);
         for (const item of rows) update(item.user_id, item.id, state => {
             state.status = "interrupted";
             state.error = "服务重启，本轮已中断，请手动重试";

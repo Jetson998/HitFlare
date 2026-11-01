@@ -1,5 +1,5 @@
-import { Copy, FileText, FolderPlus } from "lucide-react";
-import { Button, Modal, Space, Tag } from "antd";
+import { ArrowRight, Copy, FileText, FolderPlus } from "lucide-react";
+import { Modal, Tag } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { formatPromptDate, type Prompt } from "@/services/api/prompts";
@@ -30,20 +30,17 @@ export function PromptDetailDialog({ prompt, onClose, onCopy, onSaveAsset }: { p
                         {prompt.createdAt || prompt.updatedAt ? <div className="mt-4 text-xs text-stone-500 dark:text-stone-400">{prompt.createdAt ? t("common.created", { date: formatPromptDate(prompt.createdAt, i18n.resolvedLanguage) }) : null}{prompt.createdAt && prompt.updatedAt ? " · " : null}{prompt.updatedAt ? t("common.updated", { date: formatPromptDate(prompt.updatedAt, i18n.resolvedLanguage) }) : null}</div> : null}
                     </div>
                     <div className="shrink-0 pt-4">
-                        <Space wrap>
-                            {prompt.templateId ? <Link to={`/image?tab=templates&template=${encodeURIComponent(prompt.templateId)}`}><Button type="primary">使用场景模板</Button></Link> : null}
-                            <Button type={prompt.templateId ? "default" : "primary"} icon={<Copy className="size-3.5" />} onClick={() => onCopy(prompt.prompt)}>
-                                {t("common.copyPrompt")}
-                            </Button>
-                            {onSaveAsset ? (
-                                <Button icon={<FolderPlus className="size-4" />} onClick={() => onSaveAsset(prompt)}>
-                                    {t("common.addToAssets")}
-                                </Button>
-                            ) : null}
-                        </Space>
+                        <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-full bg-white px-2 py-1.5 shadow-[0_8px_30px_rgba(15,23,42,.08)] dark:bg-stone-900">
+                            {prompt.templateId ? <Link to={`/image?tab=templates&template=${encodeURIComponent(prompt.templateId)}`} className={grokAction}><span className={grokIcon}><ArrowRight className="size-4" /></span>使用场景模板</Link> : null}
+                            <button type="button" className={grokAction} onClick={() => onCopy(prompt.prompt)}><span className={grokIcon}><Copy className="size-4" /></span>{t("common.copyPrompt")}</button>
+                            {onSaveAsset ? <button type="button" className={grokAction} onClick={() => onSaveAsset(prompt)}><span className={grokIcon}><FolderPlus className="size-4" /></span>{t("common.addToAssets")}</button> : null}
+                        </div>
                     </div>
                 </div>
             ) : null}
         </Modal>
     );
 }
+
+const grokIcon = "grid size-8 shrink-0 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-800 dark:text-stone-200";
+const grokAction = "inline-flex h-8 items-center gap-1.5 rounded-full pr-2 text-[13px] leading-5 text-[#374151] hover:bg-[#F3F4F6] dark:text-stone-200 dark:hover:bg-white/10";

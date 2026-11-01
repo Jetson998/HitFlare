@@ -1,5 +1,10 @@
 export type HitFlareUser = {
     id: string;
+    tenantId: string;
+    sessionId?: string;
+    sessionExpiresAt?: string;
+    permissions?: string[];
+    permissionVersion?: number;
     email: string;
     username: string;
     role: "admin" | "user";
@@ -17,6 +22,13 @@ export class AuthApiError extends Error {
     }
 }
 
+let sessionMutation: Promise<unknown> = Promise.resolve();
+function mutateSession<T>(action: () => Promise<T>) {
+    const result = sessionMutation.then(action, action);
+    sessionMutation = result.catch(() => undefined);
+    return result;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(path, {
         ...init,
@@ -31,12 +43,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const fetchCurrentUser = () => request<{ user: HitFlareUser }>("/api/auth/me");
 
 export const login = (values: { email: string; password: string }) =>
-    request<{ user: HitFlareUser }>("/api/auth/login", { method: "POST", body: JSON.stringify(values) });
+    mutateSession(() => request<{ user: HitFlareUser }>("/api/auth/login", { method: "POST", body: JSON.stringify(values) }));
 
-export const logout = () => request<{ success: true }>("/api/auth/logout", { method: "POST", body: "{}" });
+export const logout = () => mutateSession(() => request<{ success: true }>("/api/auth/logout", { method: "POST", body: "{}" }));
 
 export const changePassword = (values: { currentPassword: string; password: string }) =>
-    request<{ success: true }>("/api/auth/password", { method: "POST", body: JSON.stringify(values) });
+    mutateSession(() => request<{ success: true }>("/api/auth/password", { method: "POST", body: JSON.stringify(values) }));
 
 export const fetchUsers = () => request<{ users: HitFlareUser[] }>("/api/admin/users");
 
@@ -50,4 +62,4 @@ export const updateUserStatus = (id: string, status: HitFlareUser["status"]) =>
     request<{ user: HitFlareUser }>(`/api/admin/users/${encodeURIComponent(id)}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
 
 export const resetUserPassword = (id: string, password: string) =>
-    request<{ success: true }>(`/api/admin/users/${encodeURIComponent(id)}/password`, { method: "POST", body: JSON.stringify({ password }) });
+    mutateSession(() => request<{ success: true }>(`/api/admin/users/${encodeURIComponent(id)}/password`, { method: "POST", body: JSON.stringify({ password }) }));

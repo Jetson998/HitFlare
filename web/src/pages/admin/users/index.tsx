@@ -23,7 +23,7 @@ export default function AdminUsersPage() {
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<HitFlareUser | null>(null);
     const [passwordTarget, setPasswordTarget] = useState<HitFlareUser | null>(null);
-    const users = useQuery({ queryKey: ["admin-users"], queryFn: fetchUsers });
+    const users = useQuery({ queryKey: ["admin-users",currentUser?.sessionId], queryFn: fetchUsers });
     const refreshUsers = () => queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     const reportError = (error: Error) => message.error(error.message);
     const create = useMutation({
@@ -42,7 +42,8 @@ export default function AdminUsersPage() {
             message.success("用户信息已更新");
             setEditTarget(null);
             editForm.resetFields();
-            if (user.id === currentUser?.id) useUserStore.setState({ user });
+            const activeUser = useUserStore.getState().user;
+            if (user.id === activeUser?.id) useUserStore.setState({ user: { ...activeUser, ...user } });
             await refreshUsers();
         },
         onError: reportError,
@@ -62,8 +63,10 @@ export default function AdminUsersPage() {
             setPasswordTarget(null);
             passwordForm.resetFields();
             if (variables.id === currentUser?.id) {
-                useUserStore.setState({ user: null, status: "anonymous" });
-                navigate("/login", { replace: true });
+                if (useUserStore.getState().user?.sessionId === currentUser.sessionId) {
+                    useUserStore.setState({ user: null, status: "anonymous" });
+                    navigate("/login", { replace: true });
+                }
                 return;
             }
             await refreshUsers();
@@ -145,7 +148,7 @@ export default function AdminUsersPage() {
                         <h1 className="workspace-title">用户管理</h1>
                         <p className="workspace-description">管理受邀用户、角色和登录状态</p>
                     </div>
-                    <Button type="primary" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>新建用户</Button>
+                    <div className="flex flex-wrap gap-2"><Button onClick={()=>navigate("/admin/logs")}>管理日志</Button><Button onClick={()=>navigate("/admin/storage")}>存储诊断</Button><Button type="primary" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>新建用户</Button></div>
                 </div>
 
                 <div className="overflow-hidden rounded-lg border border-stone-200 dark:border-stone-800">
