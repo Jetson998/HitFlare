@@ -100,7 +100,7 @@ export default function CanvasPage() {
                         <p className="text-xs text-stone-500">{t("canvas.library")}</p>
                         <h1 className="mt-3 text-3xl font-semibold">{t("canvas.title")}</h1>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                         {selectedIds.length ? (
                             <>
                                 <Button disabled={!hydrated} icon={<Download className="size-4" />} onClick={() => void exportSelected()}>

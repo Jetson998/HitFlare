@@ -5,7 +5,7 @@ interface LogoProps {
 }
 
 export function Logo({ size = 44, variant = "wordmark", className = "" }: LogoProps) {
-    const source = variant === "mark" ? "/brand/hitflare-icon-v3-transparent.png" : variant === "horizontal-en" ? "/brand/hitflare-logo-horizontal-en-v3.png" : variant === "sidebar" ? "/brand/hitflare-logo-sidebar-light.png" : "/brand/hitflare-logo-full-v3.png";
+    const source = variant === "mark" ? "/brand/hitflare-icon-v3-transparent.png" : variant === "horizontal-en" ? "/brand/hitflare-logo-horizontal-en-glass.png" : variant === "sidebar" ? "/brand/hitflare-logo-sidebar-light.png" : "/brand/hitflare-logo-full-v3.png";
     const width = size * (variant === "mark" ? 1 : variant === "horizontal-en" ? 900 / 370 : 1160 / 370);
     if (variant === "sidebar") {
         return (

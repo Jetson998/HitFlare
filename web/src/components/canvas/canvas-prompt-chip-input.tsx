@@ -193,7 +193,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
             {mention && candidates.length ? (
                 <MentionMenu rect={mention.rect} references={candidates} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertReference} />
             ) : null}
-            {imagePreview ? <ImageLightbox images={[{ id: imagePreview, src: imagePreview, alt: i18n.t("canvas.composer.imagePreview"), filename: "image.png" }]} index={0} onIndex={() => {}} onClose={() => setImagePreview(null)} /> : null}
+            {imagePreview ? <ImageLightbox variant="light" images={[{ id: imagePreview, src: imagePreview, alt: i18n.t("canvas.composer.imagePreview"), filename: "image.png" }]} index={0} onIndex={() => {}} onClose={() => setImagePreview(null)} /> : null}
         </div>
     );
 }

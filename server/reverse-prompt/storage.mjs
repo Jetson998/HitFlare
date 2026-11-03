@@ -306,7 +306,7 @@ export async function createReversePromptStore(dataDir) {
             return { id: value.id, userId: value.user_id, tenantId: value.tenant_id, status: value.status, stage: value.stage, model: { value: value.model_value, label: value.model_label }, revision: value.revision, createdAt: value.created_at, startedAt: value.started_at, updatedAt: value.updated_at, finishedAt: value.finished_at, durationMs: value.duration_ms, error: value.error, errorCode: value.error_code || undefined, failureStage: value.failure_stage || undefined, text: prompt?.modelText || preview?.promptText || "" };
         });
         const last = values.at(-1);
-        return { tasks, nextCursor: last ? encodeCursor({ createdAt: last.created_at, id: last.id }) : null };
+        return { tasks, nextCursor: values.length === limit && last ? encodeCursor({ createdAt: last.created_at, id: last.id }) : null };
     }
 
     function active(userId) {

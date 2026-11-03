@@ -106,6 +106,9 @@ export async function createWorkspaceStore(dataDir, keyring = process.env.HITFLA
         if (!row) throw new InputError("模型渠道不存在", 404);
         return row;
     }
+    function allChannels() {
+        return db.prepare("SELECT * FROM channels WHERE tenant_id=? ORDER BY owner_user_id,created_at,id").all(DEFAULT_TENANT_ID).map(row=>({ownerUserId:row.owner_user_id,...publicChannel(row)}));
+    }
     function listChannels(owner) {
         return db.prepare("SELECT * FROM channels WHERE tenant_id=? AND owner_user_id=? ORDER BY created_at,id").all(DEFAULT_TENANT_ID, owner).map(publicChannel);
     }
@@ -354,7 +357,7 @@ export async function createWorkspaceStore(dataDir, keyring = process.env.HITFLA
         if(old.input_hash!==inputHash) throw new InputError("幂等标识已用于不同来源",409);
         return mediaDto(media(owner,old.media_id));
     }
-    return { setCanvasReferences: reader=>{canvasReferences=reader;}, setGenerationReferences: reader=>{generationReferences=reader;}, allCalls:()=>db.prepare("SELECT c.*,d.metadata_json FROM model_calls c LEFT JOIN call_details d ON d.call_id=c.id WHERE c.tenant_id=? ORDER BY c.created_at,c.id").all(DEFAULT_TENANT_ID).map(row=>({...row,details:JSON.parse(row.metadata_json || "{}" )})), management, sourceReceipt,sourceMediaReceipt, limits: LIMITS, asset, mediaDto, deleteMedia, listChannels, saveChannel, deleteChannel, runtimeSecret, modelConfig, preferences, savePreferences, saveConfiguration, saveMedia, media, listAssets, saveAsset, deleteAsset, assetDiagnostics, recordCall, finishCall,
+    return { setCanvasReferences: reader=>{canvasReferences=reader;}, setGenerationReferences: reader=>{generationReferences=reader;}, allCalls:()=>db.prepare("SELECT c.*,d.metadata_json FROM model_calls c LEFT JOIN call_details d ON d.call_id=c.id WHERE c.tenant_id=? ORDER BY c.created_at,c.id").all(DEFAULT_TENANT_ID).map(row=>({...row,details:JSON.parse(row.metadata_json || "{}" )})), management, sourceReceipt,sourceMediaReceipt, limits: LIMITS, asset, mediaDto, deleteMedia, listChannels, saveChannel, deleteChannel, runtimeSecret, modelConfig, preferences, savePreferences, saveConfiguration, saveMedia, media, listAssets, saveAsset, deleteAsset, assetDiagnostics, allChannels, recordCall, finishCall,
         calls: owner => db.prepare("SELECT * FROM model_calls WHERE tenant_id=? AND owner_user_id=? ORDER BY created_at,id").all(DEFAULT_TENANT_ID,owner),
         close: () => db.close() };
     } catch(error) { db.close(); throw error; }

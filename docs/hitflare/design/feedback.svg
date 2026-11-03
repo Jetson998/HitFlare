@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760">
+<rect x="0" y="0" width="1280" height="760" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">反馈</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">每种外观一种。窄屏只改排列，不换文案样式。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<text x="28" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="start">列表、后台</text>
+<rect x="28" y="128" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="48" y="160" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">空</text>
+<text x="48" y="186" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">一个 16px 图标</text>
+<text x="48" y="208" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">一句 13px 说明</text>
+<text x="48" y="230" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">最多一个操作</text>
+<rect x="418" y="168" width="140" height="32" rx="8" fill="#6252E8" stroke="none" stroke-width="0"/>
+<text x="488.0" y="188.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">去创建</text>
+<rect x="28" y="268" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="48" y="300" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">加载</text>
+<text x="48" y="326" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">按钮内转圈</text>
+<text x="48" y="348" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">宽度不跳</text>
+<text x="48" y="370" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">不新做骨架屏</text>
+<rect x="28" y="408" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="48" y="440" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">错误</text>
+<text x="48" y="466" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">文字靠近操作</text>
+<text x="48" y="488" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">不只靠颜色</text>
+<text x="48" y="510" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">删除仍走确认</text>
+<rect x="28" y="548" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="48" y="580" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">成功</text>
+<text x="48" y="606" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">现有轻提示</text>
+<text x="48" y="628" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">不新做通知中心</text>
+<text x="48" y="650" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">自动消失</text>
+<text x="660" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="start">工作台、Agent、配置</text>
+<rect x="660" y="128" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="680" y="160" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">空</text>
+<text x="680" y="186" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">一个 16px 图标</text>
+<text x="680" y="208" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">一句 13px 说明</text>
+<text x="680" y="230" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">最多一个操作</text>
+<rect x="1050" y="168" width="140" height="40" rx="20" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="1120.0" y="192.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+<rect x="660" y="268" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="680" y="300" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">加载</text>
+<text x="680" y="326" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">按钮内转圈</text>
+<text x="680" y="348" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">宽度不跳</text>
+<text x="680" y="370" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">不新做骨架屏</text>
+<rect x="660" y="408" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="680" y="440" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">错误</text>
+<text x="680" y="466" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">文字靠近操作</text>
+<text x="680" y="488" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">不只靠颜色</text>
+<text x="680" y="510" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">删除仍走确认</text>
+<rect x="660" y="548" width="560" height="120" rx="12" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="680" y="580" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">成功</text>
+<text x="680" y="606" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">现有轻提示</text>
+<text x="680" y="628" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#44403C" text-anchor="start">不新做通知中心</text>
+<text x="680" y="650" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#9F1239" text-anchor="start">自动消失</text>
+<text x="28" y="710" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">工作台生成中沿用软圆点。创作 Agent 思考时图形轻晃，不用转圈代替。窄屏可以把按钮换到下一行，不改句子。</text>
+</svg>

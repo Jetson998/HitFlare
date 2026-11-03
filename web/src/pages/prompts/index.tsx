@@ -105,11 +105,22 @@ export default function PromptsPage() {
         if (query.hasNextPage && !query.isFetchingNextPage && target.scrollTop + target.clientHeight >= target.scrollHeight - 160) void query.fetchNextPage();
     };
 
+    const pageRef = useRef<HTMLDivElement>(null);
+    const [pageNarrow, setPageNarrow] = useState(false);
+    useEffect(() => {
+        const node = pageRef.current;
+        if (!node) return;
+        const update = () => setPageNarrow(node.clientWidth < 767);
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
     const openCategory = (category: string) => setSelectedCategory(category);
 
     const categoryLabel = (category: string) => category || t("prompts.other");
     const card = (item: Prompt) => (
-        <PromptCard item={item} onOpen={() => setSelectedPrompt(item)} onCopy={() => copyText(item.prompt, t("common.promptCopied"))} extraAction={<Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => savePromptAsset(item)}>{t("common.addToAssets")}</Button>} />
+        <PromptCard compact={pageNarrow} item={item} onOpen={() => setSelectedPrompt(item)} onCopy={() => copyText(item.prompt, t("common.promptCopied"))} extraAction={<Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => savePromptAsset(item)}>{t("common.addToAssets")}</Button>} />
     );
     const visibleCategoryItems = usablePrompts(promptItems);
     const categoryPending = coversPending(promptItems);
@@ -120,13 +131,13 @@ export default function PromptsPage() {
     return (
         <div className="flex h-full flex-col overflow-hidden bg-background text-stone-800 dark:text-stone-100">
             <main className="min-h-0 flex-1 overflow-y-auto bg-background" onScroll={handleListScroll}>
-                <div className="workspace-page">
+                <div ref={pageRef} className="workspace-page">
                     <header className="workspace-heading workspace-heading-with-search">
                         <div className="workspace-heading-copy min-w-0">
                             <h1 className="workspace-title min-w-0 truncate">{t("prompts.title")}</h1>
                             <p className="workspace-description">{t("prompts.total", { count: visibleTotal })}</p>
                         </div>
-                        <div className="workspace-search-row">
+                        <div className="workspace-search-row narrow-page-hide">
                             <Input className="workspace-search shrink-0" allowClear aria-label={t("prompts.search")} prefix={<Search className="size-4 text-stone-400" />} value={titleKeyword} placeholder={t("prompts.search")} onChange={(event) => setTitleKeyword(event.target.value)} />
                         </div>
                     </header>
@@ -136,12 +147,12 @@ export default function PromptsPage() {
                                 <h2 className="m-0 min-w-0 truncate text-[15px] font-medium leading-6 text-stone-900 dark:text-stone-100">{categoryLabel(selectedCategory)}</h2>
                                 <button type="button" className="inline-flex shrink-0 items-center gap-1 text-[13px] leading-5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" onClick={() => openCategory(ALL_PROMPTS_OPTION)}><ArrowLeft className="size-3.5" />{t("prompts.backToCategories")}</button>
                             </div>
-                            {query.isLoading || (categoryPending && visibleCategoryItems.length === 0) ? <div className="flex h-60 items-center justify-center"><Spin /></div> : <PromptGrid items={visibleCategoryItems} renderCard={card} emptyText={t("prompts.empty")} />}
+                            {query.isLoading || (categoryPending && visibleCategoryItems.length === 0) ? <div className="flex h-60 items-center justify-center"><Spin /></div> : <PromptGrid narrow={pageNarrow} items={visibleCategoryItems} renderCard={card} emptyText={t("prompts.empty")} />}
                             <div className="mt-6 text-center text-xs text-stone-500 dark:text-stone-400">{query.isFetchingNextPage ? t("prompts.loading") : query.hasNextPage ? t("prompts.loadMore") : visibleCategoryItems.length > 0 ? t("prompts.end") : null}</div>
                         </section>
                     ) : sectionsQuery.isLoading ? <div className="flex h-60 items-center justify-center"><Spin /></div> : !overviewPending && !overviewHasCards ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("prompts.empty")} className="py-16" /> : (
                         <div className="space-y-8">
-                            {sections.map((section) => <CategorySection key={section.name || "other"} section={section} label={categoryLabel(section.name)} onOpen={() => openCategory(section.name)} viewAllLabel={t("prompts.viewAll")} renderCard={card} coverVersion={coverVersion} />)}
+                            {sections.map((section) => <CategorySection key={section.name || "other"} section={section} label={categoryLabel(section.name)} onOpen={() => openCategory(section.name)} viewAllLabel={t("prompts.viewAll")} renderCard={card} coverVersion={coverVersion} narrow={pageNarrow} />)}
                         </div>
                     )}
                 </div>
@@ -151,7 +162,7 @@ export default function PromptsPage() {
     );
 }
 
-function CategorySection({ section, label, onOpen, viewAllLabel, renderCard, coverVersion }: { section: PromptSection; label: string; onOpen: () => void; viewAllLabel: string; renderCard: (item: Prompt) => ReactNode; coverVersion: number }) {
+function CategorySection({ section, label, onOpen, viewAllLabel, renderCard, coverVersion, narrow }: { section: PromptSection; label: string; onOpen: () => void; viewAllLabel: string; renderCard: (item: Prompt) => ReactNode; coverVersion: number; narrow: boolean }) {
     const shown = usablePrompts(section.items);
     const pending = coversPending(section.items);
     void coverVersion;
@@ -165,28 +176,28 @@ function CategorySection({ section, label, onOpen, viewAllLabel, renderCard, cov
                     <ArrowRight className="size-3.5" />
                 </button>
             </div>
-            {shown.length === 0 ? pending ? <div className="flex h-24 items-center justify-center"><Spin /></div> : null : <TwoRowCards items={section.items} renderCard={renderCard} coverVersion={coverVersion} />}
+            {shown.length === 0 ? pending ? <div className="flex h-24 items-center justify-center"><Spin /></div> : null : <TwoRowCards narrow={narrow} items={section.items} renderCard={renderCard} coverVersion={coverVersion} />}
         </section>
     );
 }
 
-function TwoRowCards({ items, renderCard, coverVersion }: { items: Prompt[]; renderCard: (item: Prompt) => ReactNode; coverVersion: number }) {
+function TwoRowCards({ items, renderCard, coverVersion, narrow }: { items: Prompt[]; renderCard: (item: Prompt) => ReactNode; coverVersion: number; narrow: boolean }) {
     const ref = useRef<HTMLDivElement>(null);
-    const [columns, setColumns] = useState(4);
+    const [columns, setColumns] = useState(narrow ? 2 : 4);
     useEffect(() => {
         const node = ref.current;
         if (!node) return;
-        const update = () => setColumns(Math.max(1, Math.floor((node.clientWidth + 16) / 256)));
+        const update = () => setColumns(narrow ? 2 : Math.max(1, Math.floor((node.clientWidth + 16) / 256)));
         update();
         const observer = new ResizeObserver(update);
         observer.observe(node);
         return () => observer.disconnect();
-    }, []);
+    }, [narrow]);
     void coverVersion;
     const shown = usablePrompts(items).slice(0, columns * 2);
-    return <div ref={ref} className="workspace-grid">{shown.map((item) => <div key={`${item.sourceId}:${item.id}`}>{renderCard(item)}</div>)}</div>;
+    return <div ref={ref} className={narrow ? "grid grid-cols-2 gap-3" : "workspace-grid"}>{shown.map((item) => <div key={`${item.sourceId}:${item.id}`}>{renderCard(item)}</div>)}</div>;
 }
 
-function PromptGrid({ items, renderCard, emptyText }: { items: Prompt[]; renderCard: (item: Prompt) => ReactNode; emptyText: string }) {
-    return <div><div className="workspace-grid">{items.map((item) => <div key={`${item.sourceId}:${item.id}`}>{renderCard(item)}</div>)}</div>{items.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} className="py-16" /> : null}</div>;
+function PromptGrid({ items, renderCard, emptyText, narrow }: { items: Prompt[]; renderCard: (item: Prompt) => ReactNode; emptyText: string; narrow: boolean }) {
+    return <div><div className={narrow ? "grid grid-cols-2 gap-3" : "workspace-grid"}>{items.map((item) => <div key={`${item.sourceId}:${item.id}`}>{renderCard(item)}</div>)}</div>{items.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} className="py-16" /> : null}</div>;
 }

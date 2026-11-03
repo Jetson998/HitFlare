@@ -31,7 +31,6 @@ type AssetFormValues = {
 
 type ImageDraft = ImageAsset["data"] | null;
 
-const kindOptions = ["all", "text", "image", "video", "audio"] as const;
 const assetDateFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric" });
 
 export default function AssetsPage() {
@@ -48,7 +47,6 @@ export default function AssetsPage() {
     const updateAsset = useAssetStore((state) => state.updateAsset);
     const removeAsset = useAssetStore((state) => state.removeAsset);
     const [keyword, setKeyword] = useState("");
-    const [kindFilter, setKindFilter] = useState<AssetKind | "all">("all");
     const [originFilter, setOriginFilter] = useState("all");
     const [favoritesOnly, setFavoritesOnly] = useState(false);
     const [viewMode, setViewMode] = useState<"timeline" | "grid">("timeline");
@@ -57,7 +55,20 @@ export default function AssetsPage() {
     const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
     const [isAssetOpen, setIsAssetOpen] = useState(false);
     const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
+    const [directImage, setDirectImage] = useState<Asset | null>(null);
+    const pageRef = useRef<HTMLDivElement>(null);
+    const [pageNarrow, setPageNarrow] = useState(false);
     const previewAsset = assets.find((asset) => asset.id === previewAssetId) || null;
+    useEffect(() => {
+        const node = pageRef.current;
+        if (!node) return;
+        const update = () => setPageNarrow(node.clientWidth < 767);
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+    const openAsset = (asset: Asset) => { if (pageNarrow && asset.kind === "image") setDirectImage(asset); else setPreviewAssetId(asset.id); };
     const [deletingAsset, setDeletingAsset] = useState<Asset | null>(null);
     const [formKind, setFormKind] = useState<AssetKind>("text");
     const [imageDraft, setImageDraft] = useState<ImageDraft>(null);
@@ -72,13 +83,12 @@ export default function AssetsPage() {
     const filteredAssets = useMemo(() => {
         const query = keyword.trim().toLowerCase();
         return validAssets.filter((asset) => {
-            if (kindFilter !== "all" && asset.kind !== kindFilter) return false;
             if (originFilter !== "all" && asset.origin !== originFilter) return false;
             if (favoritesOnly && asset.metadata?.favorite !== true) return false;
             if (!query) return true;
             return assetSearchText(asset).includes(query);
         }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [validAssets, keyword, kindFilter, originFilter, favoritesOnly]);
+    }, [validAssets, keyword, originFilter, favoritesOnly]);
 
     const visibleAssets = useMemo(() => {
         const start = (page - 1) * pageSize;
@@ -255,13 +265,13 @@ export default function AssetsPage() {
         <div className="flex h-full flex-col overflow-hidden bg-background text-stone-900 dark:text-stone-100">
             {assetError ? <p role="alert" className="px-6 text-red-500">{assetError} <Button onClick={()=>void useAssetStore.getState().load().catch(()=>{})}>重新加载</Button></p> : null}
             <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-                <div className="workspace-page">
+                <div ref={pageRef} className="workspace-page">
                     <header className="workspace-heading workspace-heading-with-search">
                         <div className="workspace-heading-copy min-w-0">
                             <h1 className="workspace-title">{t("assets.title")}</h1>
                             <p className="workspace-description">{t("assets.description")}</p>
                         </div>
-                        <div className="workspace-search-row">
+                        <div className="workspace-search-row narrow-page-hide">
                             <Input
                                 className="workspace-search"
                                 allowClear
@@ -281,13 +291,6 @@ export default function AssetsPage() {
                         <div className="workspace-filter-bar assets-filter-bar">
                             <div className="assets-filter-controls flex-wrap">
                                 <Segmented value={originFilter} aria-label="资产来源" options={[{ value: "all", label: "全部资产" }, { value: "upload", label: "上传素材" }, { value: "generated", label: "生成结果" }]} onChange={value => { setPage(1); setOriginFilter(value); }} />
-                                <Select<AssetKind | "all">
-                                    aria-label="模态筛选"
-                                    value={kindFilter}
-                                    className="min-w-[132px]"
-                                    options={kindOptions.map((value) => ({ value, label: value === "all" ? "全部模态" : t(`assets.kinds.${value}`) }))}
-                                    onChange={(value) => { setPage(1); setKindFilter(value); }}
-                                />
                                 <Button
                                     type={favoritesOnly ? "default" : "text"}
                                     aria-pressed={favoritesOnly}
@@ -297,7 +300,7 @@ export default function AssetsPage() {
                                 >
                                     我的收藏
                                 </Button>
-                                <div className="ml-auto flex items-center gap-2">
+                                <div className="narrow-page-hide ml-auto flex items-center gap-2">
                                     <span className="mr-2 whitespace-nowrap text-sm text-stone-400">{filteredAssets.length} 项</span>
                                     <Dropdown
                                         trigger={["click"]}
@@ -317,7 +320,7 @@ export default function AssetsPage() {
                                     >
                                         <Button type="text" shape="circle" icon={<MoreHorizontal className="size-4" />} aria-label={t("assets.moreActions")} title={t("assets.moreActions")} />
                                     </Dropdown>
-                                    <div role="group" aria-label="展示方式" className="flex items-center gap-0.5 rounded-lg bg-stone-100 p-0.5 dark:bg-stone-900">
+                                    <div role="group" aria-label="展示方式" className="narrow-page-hide flex items-center gap-0.5 rounded-lg bg-stone-100 p-0.5 dark:bg-stone-900">
                                         <Button type={viewMode === "timeline" ? "default" : "text"} aria-pressed={viewMode === "timeline"} aria-label="时间轴展示" title="时间轴展示" icon={<List className="size-4" />} onClick={() => setViewMode("timeline")} />
                                         <Button type={viewMode === "grid" ? "default" : "text"} aria-pressed={viewMode === "grid"} aria-label="宫格展示" title="宫格展示" icon={<LayoutGrid className="size-4" />} onClick={() => setViewMode("grid")} />
                                     </div>
@@ -326,7 +329,7 @@ export default function AssetsPage() {
                         </div>
                     </div>
                     <div className="flex flex-col gap-5">
-                        {viewMode === "timeline" ? timelineGroups.map(([date, items]) => (
+                        {viewMode === "timeline" || pageNarrow ? timelineGroups.map(([date, items]) => (
                             <section key={date}>
                                 <div className="mb-4 flex items-center gap-3">
                                     <h2 className="text-[13px] font-normal text-stone-500 dark:text-stone-400">{date}</h2>
@@ -334,12 +337,12 @@ export default function AssetsPage() {
                                     <div className="h-px flex-1 bg-border" />
                                 </div>
                                 <div className="workspace-grid">
-                                    {items.map((asset) => <AssetCard key={asset.id} asset={asset} onOpen={() => setPreviewAssetId(asset.id)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} onToggleFavorite={() => toggleFavorite(asset)} />)}
+                                    {items.map((asset) => <AssetCard key={asset.id} asset={asset} onOpen={() => openAsset(asset)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} onToggleFavorite={() => toggleFavorite(asset)} />)}
                                 </div>
                             </section>
                         )) : (
                             <div className="workspace-grid">
-                                {visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} onOpen={() => setPreviewAssetId(asset.id)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} onToggleFavorite={() => toggleFavorite(asset)} />)}
+                                {visibleAssets.map((asset) => <AssetCard key={asset.id} asset={asset} onOpen={() => openAsset(asset)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} onToggleFavorite={() => toggleFavorite(asset)} />)}
                             </div>
                         )}
 
@@ -472,6 +475,7 @@ export default function AssetsPage() {
             </Modal>
 
             <AssetDetailsModal asset={previewAsset} onClose={() => setPreviewAssetId(null)} onCopy={copyAssetText} onDownload={downloadImage} onToggleFavorite={() => previewAsset && toggleFavorite(previewAsset)} onDelete={() => setDeletingAsset(previewAsset)} />
+            {directImage?.kind === "image" ? <ImageLightbox variant="light" images={[{ id: directImage.id, src: directImage.data.dataUrl || directImage.coverUrl, alt: directImage.title, filename: directImage.title || "image.png", asset: { key: typeof directImage.metadata?.assetKey === "string" ? directImage.metadata.assetKey : `asset:${directImage.id}`, savedId: directImage.id, title: directImage.title, source: directImage.source || "内容库", url: directImage.data.dataUrl || directImage.coverUrl, storageKey: directImage.data.storageKey, width: directImage.data.width, height: directImage.data.height, bytes: directImage.data.bytes, mimeType: directImage.data.mimeType, metadata: directImage.metadata } }]} index={0} onIndex={() => {}} onClose={() => setDirectImage(null)} /> : null}
 
             <input ref={assetInputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importAssetZip(event.target.files?.[0])} />
 

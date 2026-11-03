@@ -1,0 +1,275 @@
+[
+  {
+    "scene": "asset-detail-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "heavy-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "heavy-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "heavy-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "heavy-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "library-light-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "library-light-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "library-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "library-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "library-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "library-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "light-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "light-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "light-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "light-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "picker-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "picker-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "picker-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "picker-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "reference-menu-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "reference-menu-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "reference-menu-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "reference-menu-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "results-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "results-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "results-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "results-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "settings-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "settings-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "settings-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "settings-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "workbench-empty-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "workbench-empty-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "workbench-empty-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "workbench-empty-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "workbench-narrow-dark",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "workbench-narrow",
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  {
+    "scene": "workbench-wide-dark",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  {
+    "scene": "workbench-wide",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  }
+]

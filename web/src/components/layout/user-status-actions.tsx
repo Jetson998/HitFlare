@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { App, Dropdown, Form, Input, Modal, Popover, Tooltip } from "antd";
 import { BookOpen, KeyRound, Keyboard, LogOut, MoreHorizontal, Puzzle, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -19,15 +19,17 @@ type UserStatusActionsProps = {
     showConfig?: boolean;
     variant?: "default" | "canvas" | "sidebar";
     collapsed?: boolean;
+    openPasswordToken?: number;
     onOpenShortcuts?: () => void;
     onOpenPlugins?: () => void;
 };
 
-export function UserStatusActions({ showConfig = true, variant = "default", collapsed = false, onOpenShortcuts, onOpenPlugins }: UserStatusActionsProps) {
+export function UserStatusActions({ showConfig = true, variant = "default", collapsed = false, openPasswordToken = 0, onOpenShortcuts, onOpenPlugins }: UserStatusActionsProps) {
     const { message } = App.useApp();
     const { i18n, t } = useTranslation();
     const [passwordForm] = Form.useForm<{ currentPassword: string; password: string; confirmPassword: string }>();
     const [passwordOpen, setPasswordOpen] = useState(false);
+    useEffect(() => { if (openPasswordToken) setPasswordOpen(true); }, [openPasswordToken]);
     const [passwordSubmitting, setPasswordSubmitting] = useState(false);
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
@@ -116,8 +118,8 @@ export function UserStatusActions({ showConfig = true, variant = "default", coll
                         },
                     }}
                 >
-                    <button type="button" className={cn(naturalIconClass, "rounded-full bg-stone-100 text-xs font-semibold dark:bg-stone-800", !(variant === "sidebar" && collapsed) && "ml-1")} aria-label={t("auth.account")} title={userDisplayName}>
-                        {userDisplayName.slice(0, 1).toUpperCase()}
+                    <button type="button" className={cn(naturalIconClass, "h-8 min-w-8 rounded-full bg-[#F3F4F6] px-2 text-[12px] font-medium leading-none text-[#374151] dark:bg-stone-800 dark:text-stone-200", !(variant === "sidebar" && collapsed) && "ml-1")} aria-label={t("auth.account")} title={userDisplayName}>
+                        {userDisplayName.slice(0, 2)}
                     </button>
                 </Dropdown>
             ) : null}

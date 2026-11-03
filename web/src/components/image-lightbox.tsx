@@ -22,6 +22,18 @@ export type LightboxAsset = {
 
 export type LightboxImage = { id: string; src: string; thumb?: string; alt: string; filename?: string; asset?: LightboxAsset };
 
+function useViewportNarrow() {
+    const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+    useEffect(() => {
+        const query = window.matchMedia("(max-width: 767px)");
+        const update = () => setNarrow(query.matches);
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, []);
+    return narrow;
+}
+
 const iconButton = "grid size-10 place-items-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40";
 
 function matchAsset(spec?: LightboxAsset) {
@@ -52,6 +64,7 @@ export function ImageLightbox({ images, index, onIndex, onClose, variant = "heav
     const current = images[index] || images[0];
     const count = images.length;
     const heavy = variant === "heavy";
+    const narrow = useViewportNarrow();
     const saved = !current?.asset ? undefined : current.asset.savedId ? assets.find(asset => asset.id === current.asset?.savedId) || assets.find(asset => asset.metadata?.assetKey === current.asset?.key) : assets.find(asset => asset.metadata?.assetKey === current.asset?.key);
     const favorite = saved?.metadata?.favorite === true;
     useEffect(() => { if (heavy) void ensureLoaded(); }, [heavy]);
@@ -64,13 +77,13 @@ export function ImageLightbox({ images, index, onIndex, onClose, variant = "heav
                 onClose();
                 return;
             }
-            if (count < 2) return;
+            if (!heavy || narrow || count < 2) return;
             if (event.key === "ArrowLeft") onIndex((index - 1 + count) % count);
             if (event.key === "ArrowRight") onIndex((index + 1) % count);
         };
         window.addEventListener("keydown", onKey, true);
         return () => window.removeEventListener("keydown", onKey, true);
-    }, [count, index, onClose, onIndex]);
+    }, [count, heavy, index, narrow, onClose, onIndex]);
     if (!current) return null;
     const download = async () => {
         try {
@@ -161,22 +174,28 @@ export function ImageLightbox({ images, index, onIndex, onClose, variant = "heav
                 <button type="button" className={iconButton} aria-label="关闭" title="关闭" onClick={onClose}><X className="size-4" /></button>
             </div>
         </div>
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-16" onClick={keepOpen}>
-            {count > 1 && <button type="button" className={`absolute left-4 ${iconButton}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); step(-1); }}><ChevronLeft className="size-5" /></button>}
+        <div className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden ${narrow ? "px-4" : "px-16"}`} onClick={keepOpen}>
+            {heavy && count > 1 && !narrow && <button type="button" className={`absolute left-4 ${iconButton}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); step(-1); }}><ChevronLeft className="size-5" /></button>}
             <img src={current.src} alt={current.alt} draggable={false} onClick={event => event.stopPropagation()} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} className={`max-h-full max-w-full object-contain select-none ${zoom > 1 ? "touch-none cursor-grab" : ""} ${dragging ? "cursor-grabbing" : "transition-transform duration-200"}`} style={{ transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scale(${(flipX ? -1 : 1) * zoom}, ${(flipY ? -1 : 1) * zoom})` }} />
-            {count > 1 && <button type="button" className={`absolute right-4 ${iconButton}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); step(1); }}><ChevronRight className="size-5" /></button>}
+            {heavy && count > 1 && !narrow && <button type="button" className={`absolute right-4 ${iconButton}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); step(1); }}><ChevronRight className="size-5" /></button>}
         </div>
         <div className="flex flex-col items-center gap-4 px-5 pb-8 pt-4" onClick={keepOpen}>
-            {count > 1 && <div className="flex max-w-full justify-center gap-2 overflow-x-auto" onClick={event => event.stopPropagation()}>
+            {count > 1 && <div className="w-full max-w-full overflow-x-auto overscroll-x-contain" onClick={event => event.stopPropagation()}>
+                <div className="mx-auto flex w-max min-w-full justify-center gap-2">
                 {images.map((image, itemIndex) => <button type="button" key={image.id} aria-label={`查看第 ${itemIndex + 1} 张`} aria-current={itemIndex === index} className={`size-14 shrink-0 overflow-hidden rounded-lg ${itemIndex === index ? "ring-2 ring-white" : "opacity-60 hover:opacity-100"}`} onClick={() => onIndex(itemIndex)}><img src={image.thumb || image.src} alt="" className="size-full object-cover" /></button>)}
+                </div>
             </div>}
-            <div className="flex w-fit items-center gap-3 rounded-full bg-black/40 px-6 text-[18px] leading-none text-white" style={{ zoom: 0.8 }} onClick={event => event.stopPropagation()}>
+            <div className="w-full max-w-full overflow-x-auto overscroll-x-contain" onClick={event => event.stopPropagation()}>
+            <div className="mx-auto flex w-max min-w-full justify-center">
+            <div className="flex w-max items-center gap-3 rounded-full bg-black/40 px-6 text-[18px] leading-none text-white" style={{ zoom: 0.8 }}>
                 <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-white/10 hover:text-white" aria-label="上下翻转" title="上下翻转" onClick={() => setFlipY(value => !value)}><SwapOutlined rotate={90} /></button>
                 <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-white/10 hover:text-white" aria-label="左右翻转" title="左右翻转" onClick={() => setFlipX(value => !value)}><SwapOutlined /></button>
                 <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-white/10 hover:text-white" aria-label="向左旋转" title="向左旋转" onClick={() => setRotation(value => value - 90)}><RotateLeftOutlined /></button>
                 <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-white/10 hover:text-white" aria-label="向右旋转" title="向右旋转" onClick={() => setRotation(value => value + 90)}><RotateRightOutlined /></button>
                 <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:text-white/25 disabled:hover:bg-transparent" aria-label="缩小" title="缩小" disabled={zoom <= 0.5} onClick={() => changeZoom(-0.25)}><ZoomOutOutlined /></button>
                 <button type="button" className="grid size-11 place-items-center rounded-full hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:text-white/25 disabled:hover:bg-transparent" aria-label="放大" title="放大" disabled={zoom >= 3} onClick={() => changeZoom(0.25)}><ZoomInOutlined /></button>
+            </div>
+            </div>
             </div>
         </div>
     </div>, document.body);

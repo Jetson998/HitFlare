@@ -128,7 +128,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                 <div>
                     {!showDoneButton ? <h1 className="workspace-title">{t("config.title")}</h1> : null}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button type="button" disabled={!isAdmin} className={grokSecondary} onClick={() => configInputRef.current?.click()}><Upload className="size-3.5" />{t("config.import")}</button>
                     <button type="button" disabled={!isAdmin} className={grokSecondary} onClick={exportConfig}><Download className="size-3.5" />{t("config.export")}</button>
                     <input ref={configInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && void loadConfigFile(event.target.files[0])} />

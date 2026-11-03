@@ -16,6 +16,14 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
         if (open && source) setDraft(source);
     }, [open, source]);
 
+    const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+    useEffect(() => {
+        const query = window.matchMedia("(max-width: 767px)");
+        const update = () => setNarrow(query.matches);
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, []);
     if (!draft) return null;
 
     const patch = (value: Partial<PromptSource>) => setDraft((current) => (current ? { ...current, ...value } : current));
@@ -36,21 +44,16 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
         try {await onSave({ ...draft, name, url, homepage: draft.homepage.trim(), builtIn: false });onClose();}catch(error){message.error(error instanceof Error?error.message:"来源保存失败，请保留草稿后重试");}finally{setSaving(false);}
     };
 
+    const actions = <Space><Button onClick={onClose}>{t("common.cancel")}</Button><Button type="primary" disabled={!isAdmin} loading={saving} onClick={() => void save()}>{t("common.save")}</Button></Space>;
     return (
         <Drawer
             open={open}
-            width={560}
+            width={narrow ? "100vw" : 560}
             title={t(source?.name ? "config.promptSources.editor.editTitle" : "config.promptSources.editor.addTitle")}
             onClose={onClose}
             styles={{ body: { paddingTop: 16 } }}
-            extra={
-                <Space>
-                    <Button onClick={onClose}>{t("common.cancel")}</Button>
-                    <Button type="primary" disabled={!isAdmin} loading={saving} onClick={()=>void save()}>
-                        {t("common.save")}
-                    </Button>
-                </Space>
-            }
+            extra={narrow ? null : actions}
+            footer={narrow ? <div className="flex justify-end">{actions}</div> : null}
         >
             <div className="space-y-5">
                 <label className="block">

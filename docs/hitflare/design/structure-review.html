@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HitFlare · 二级页结构核对</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f3f3f2;color:#222;font:13px/1.6 -apple-system,"PingFang SC",sans-serif}button{font:inherit;cursor:pointer}.seg{display:flex;width:max-content;margin-top:14px;padding:3px;background:#e9e9e7;border-radius:9px;gap:2px}.seg button{border:0;background:transparent;padding:6px 12px;color:#64676c;border-radius:6px}.seg button[aria-pressed=true]{background:#fff;color:#202226}header{padding:24px 32px 12px;background:#fafafa;border-bottom:1px solid #dededc}h1{margin:4px 0;font-size:24px;line-height:32px}p{margin:0;color:#65676a}a{color:inherit}.scenes{display:flex;gap:6px;flex-wrap:wrap;padding:14px 32px}.scenes button{border:1px solid transparent;background:transparent;border-radius:20px;padding:7px 12px;color:#686b70}.scenes button[aria-pressed=true]{background:#fff;border-color:#ddd;color:#17191c}.board{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:24px;padding:0 32px 24px}.device{position:relative;overflow:hidden;border:1px solid #d5d7d9;border-radius:12px;background:#fff}.device iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0}.label{display:flex;justify-content:space-between;margin-bottom:8px;color:#707276;font-size:12px}.label strong{color:#26282b;font-weight:500}.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:0 32px 32px;padding-top:16px;border-top:1px solid #ddd;color:#696d72;font-size:12px}.notes b{display:block;color:#303237;margin-bottom:4px}@media(max-width:950px){.board,.notes{grid-template-columns:1fr}.phone{max-width:390px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="letter-spacing:.14em;font-size:11px;color:#737578">HITFLARE / STRUCTURE ONLY</div>
+    <h1>二级页只核对结构</h1>
+    <p>按类型选资产和窄屏资产预览对照线上结构。其余二级页没有单独截图。材质评审在 <a href="glass-review.html">glass-review.html</a>。</p>
+    <div class="seg" aria-label="材质"><button data-material="flat" aria-pressed="true">线上基线</button><button data-material="glass">玻璃候选</button></div>
+  </header>
+  <nav class="scenes"></nav>
+  <main class="board">
+    <section><div class="label"><strong>宽屏</strong><span>1440 × 900</span></div><div class="device" id="wide"><iframe title="宽屏结构"></iframe></div></section>
+    <section class="phone"><div class="label"><strong>窄屏</strong><span>390 × 844</span></div><div class="device" id="narrow"><iframe title="窄屏结构"></iframe></div></section>
+  </main>
+  <aside class="notes">
+    <div><b>灵感详情</b><p>宽屏 720。窄屏铺满视口。封面在上，提示词滚动，复制和加入资产在底部。</p></div>
+    <div><b>配置抽屉</b><p>渠道宽屏 640，来源宽屏 560。窄屏都铺满，取消和保存移到底部。</p></div>
+    <div><b>资产</b><p>宽屏是详情卡。窄屏点图片不进这张卡，轻度预览以线上底稿为准，不在这页手画。</p></div>
+  </aside>
+  <script>
+    const scenes=[["prompt","灵感详情"],["channel","渠道抽屉"],["source","来源抽屉"],["picker","按类型选资产"],["asset","资产详情"],["log","日志详情"]];
+    const nav=document.querySelector(".scenes");
+    let scene="picker", material="flat";
+    nav.innerHTML=scenes.map(([id,label])=>`<button data-scene="${id}">${label}</button>`).join("");
+    const frames=[{node:document.querySelector("#wide"),width:1440,height:900,layout:"wide"},{node:document.querySelector("#narrow"),width:390,height:844,layout:"narrow"}];
+    function fit(){for(const frame of frames){const factor=frame.node.clientWidth/frame.width;frame.node.style.height=`${frame.height*factor}px`;Object.assign(frame.node.firstElementChild.style,{width:`${frame.width}px`,height:`${frame.height}px`,transform:`scale(${factor})`});}}
+    function src(frame){
+      if(scene==="asset"&&frame.layout==="narrow")return `glass-live-scene.html?scene=library-light&theme=light&material=${material}&revision=structure-compare`;
+      if(scene==="picker")return `glass-live-scene.html?scene=typed-picker&theme=light&material=${material}&revision=structure-compare`;
+      return `structure-scene.html?scene=${scene}&layout=${frame.layout}`;
+    }
+    function render(){
+      document.querySelectorAll("[data-material]").forEach(button=>button.setAttribute("aria-pressed", button.dataset.material===material));
+      document.querySelectorAll("[data-scene]").forEach(button=>button.setAttribute("aria-pressed", button.dataset.scene===scene));
+      for(const frame of frames)frame.node.firstElementChild.src=src(frame);
+      fit();
+    }
+    document.addEventListener("click", event=>{
+      const button=event.target.closest("button");
+      if(!button)return;
+      if(button.dataset.material)material=button.dataset.material;
+      else if(button.dataset.scene)scene=button.dataset.scene;
+      else return;
+      render();
+    });
+    new ResizeObserver(fit).observe(document.querySelector(".board"));
+    render();
+  </script>
+</body>
+</html>

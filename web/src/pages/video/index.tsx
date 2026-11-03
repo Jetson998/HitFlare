@@ -1,7 +1,7 @@
 import {useUserStore} from "@/stores/use-user-store";
-import { ArrowLeft, ArrowRight, ChevronUp, Download, FolderPlus, History, LoaderCircle, Plus, Sparkles, VideoIcon, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronUp, Download, FolderPlus, LoaderCircle, Plus, Sparkles, VideoIcon, X } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { App, Button, Drawer, Input, Modal, Popover, Typography } from "antd";
+import { App, Button, Input, Modal, Typography } from "antd";
 import {createGeneration,listGenerations,readGeneration,deleteGeneration,cancelGeneration,bindGenerationOutput,recordGenerationOperation,reportGeneration,assertGenerationSession,type GenerationTask,type GenerationContext} from "@/services/api/generations";
 import {sessionIdentity} from "@/services/api/workspace";
 import type {VideoGenerationResult} from "@/services/api/video";
@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
 import { GenerationHistoryPanel, type GenerationHistoryItem } from "@/components/generation-history-panel";
 import { ModelPicker } from "@/components/model-picker";
+import { SettingsDialog } from "@/components/settings-dialog";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { WorkbenchActionBar } from "@/components/workbench-action-bar";
 import { VideoSettingsPanel, normalizeVideoResolutionValue, normalizeVideoSizeValue, videoModeLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
@@ -105,7 +106,7 @@ export default function VideoPage() {
     const [results, setResults] = useState<GenerationResult[]>([]);
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
-    const [logsOpen, setLogsOpen] = useState(false);
+    const [historyScreen, setHistoryScreen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [startedAt, setStartedAt] = useState(0);
@@ -399,7 +400,7 @@ export default function VideoPage() {
 
     const previewGenerationLog = (log: GenerationLog) => {
         setPreviewLog(log);
-        setLogsOpen(false);
+        setHistoryScreen(false);
         setPrompt(log.prompt);
         setReferences(log.references || []);
         if (log.config.videoModel || log.model) updateConfig("videoModel", log.config.videoModel || log.model);
@@ -434,25 +435,26 @@ export default function VideoPage() {
         const height = 132;
         setReferenceMenu({ x: Math.max(8, Math.min(x, window.innerWidth - width - 8)), y: Math.max(8, Math.min(y, window.innerHeight - height - 8)) });
     };
-    const historyPanel = (closeDrawer = false) => (
-        <GenerationHistoryPanel variant="rail" logs={historyItems} activeLogId={previewLog?.id} newLabel="新建视频" onNew={() => { if (closeDrawer) setLogsOpen(false); createSession(); }} onSelectLog={(item) => { if (closeDrawer) setLogsOpen(false); openHistoryLog(item); }} />
+    const historyPanel = (closeScreen = false) => (
+        <GenerationHistoryPanel variant="rail" logs={historyItems} activeLogId={previewLog?.id} newLabel="新建视频" leading={closeScreen ? <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-800 dark:text-stone-100" aria-label="返回创作" onClick={() => setHistoryScreen(false)}><ChevronLeft className="size-5" /></button> : undefined} onNew={() => { if (closeScreen) setHistoryScreen(false); createSession(); }} onSelectLog={(item) => { if (closeScreen) setHistoryScreen(false); openHistoryLog(item); }} />
     );
 
     return (
-        <div className="@container/workbench flex h-full min-h-0 overflow-hidden bg-white text-[#111827] dark:bg-stone-950 dark:text-stone-100">
+        <div className="@container/workbench relative flex h-full min-h-0 overflow-hidden bg-white text-[#111827] dark:bg-stone-950 dark:text-stone-100">
             <aside className="hidden w-[300px] shrink-0 @min-[1100px]/workbench:block @min-[1440px]/workbench:w-[320px]">
                 {historyPanel()}
             </aside>
+            {historyScreen ? <div className="absolute inset-0 z-20 min-h-0 bg-[#F9FAFB] @min-[1100px]/workbench:hidden dark:bg-stone-900">{historyPanel(true)}</div> : null}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <header className="flex shrink-0 items-center justify-end gap-3 px-4 pb-3 pt-4">
-                    <div className="flex items-center gap-2">
+                <header className="flex shrink-0 items-center justify-between gap-3 px-6 pb-3 pt-4 @min-[960px]/app:px-4">
+                    <button type="button" className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] @min-[1100px]/workbench:hidden dark:bg-stone-900 dark:text-stone-100" aria-label="生成记录" onClick={() => setHistoryScreen(true)}><ChevronLeft className="size-5" /></button>
+                    <div className="ml-auto flex items-center gap-2">
                         {running ? <button type="button" className={headerTextButton} onClick={() => void cancelCurrent()}>取消等待</button> : previewLog ? <button type="button" className={headerTextButton} onClick={deleteCurrent}>删除记录</button> : null}
-                        <button type="button" className={`${grokIconButton} @min-[1100px]/workbench:hidden`} aria-label={t("workbench.logs")} title={t("workbench.logs")} onClick={() => setLogsOpen(true)}><History className="size-4" /></button>
                     </div>
                 </header>
                 <main className="grok-scrollbar grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @min-[1100px]/workbench:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] @min-[1100px]/workbench:overflow-hidden">
                     <section className="contents">
-                        <div data-settings-column className="grok-scrollbar flex min-w-0 flex-col border-b border-[#F3F4F6] p-5 dark:border-stone-800 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto @min-[1100px]/workbench:border-b-0 @min-[1100px]/workbench:border-r">
+                        <div data-settings-column className="grok-scrollbar flex min-w-0 flex-col border-b border-[#F3F4F6] px-6 py-5 dark:border-stone-800 @min-[960px]/app:px-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto @min-[1100px]/workbench:border-b-0 @min-[1100px]/workbench:border-r">
                             <div className="space-y-5">
                                 <div>
                                     <div className="mb-2 flex items-center justify-between gap-3">
@@ -501,7 +503,7 @@ export default function VideoPage() {
                                 action={{ label: t("workbench.generate"), icon: <Sparkles className="size-4" />, loading: running, disabled: !canGenerate || running, onClick: () => void generate() }}
                             />
                         </div>
-                        <div className="grok-scrollbar flex min-w-0 flex-col p-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto">
+                        <div className="grok-scrollbar flex min-w-0 flex-col px-6 py-5 @min-[960px]/app:px-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto">
                             {results.length ? (
                                 <div className="grid gap-4">
                                     {results.map((result) => (result.status === "success" && result.video ? <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} /> : result.status === "failed" ? <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} /> : <PendingVideoCard key={result.id} elapsed={running ? t("workbench.waiting", { time: formatDuration(elapsedMs) }) : undefined} />))}
@@ -517,9 +519,6 @@ export default function VideoPage() {
                 </main>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(event) => { void addReferences(event.target.files); event.target.value = ""; }} />
-            <Drawer title={null} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)} styles={{ body: { padding: 0, height: "70vh" } }}>
-                {historyPanel(true)}
-            </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <Modal title={t("videoWorkbench.experimentalTitle")} open={experimentalNoticeOpen} centered onCancel={() => setExperimentalNoticeOpen(false)} onOk={() => setExperimentalNoticeOpen(false)} okText={t("videoWorkbench.experimentalConfirm")} footer={(_, { OkBtn }) => <OkBtn />}>
@@ -536,41 +535,24 @@ function GenerationSettings({ config, model, disabled, updateConfig, openConfigD
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const [span, setSpan] = useState({ width: 380, offset: 0 });
-    const measure = () => {
-        const trigger = triggerRef.current;
-        if (!trigger) return;
-        const column = trigger.closest("[data-settings-column]") as HTMLElement | null;
-        const triggerRect = trigger.getBoundingClientRect();
-        const columnRect = column?.getBoundingClientRect();
-        if (!columnRect) { setSpan({ width: Math.round(triggerRect.width), offset: 0 }); return; }
-        setSpan({ width: Math.round(columnRect.width), offset: Math.round(columnRect.left - triggerRect.left) });
-    };
-    useEffect(() => {
-        if (!open) return;
-        measure();
-        window.addEventListener("resize", measure);
-        return () => window.removeEventListener("resize", measure);
-    }, [open]);
     const summary = [modelOptionLabel(config, model), `${normalizeResolution(config.vquality)}p`, videoSizeLabel(config.size), videoSecondsLabel(config.videoSeconds), videoModeLabel(config.videoMode)].filter(Boolean).join(" · ");
     const title = t("imageWorkbench.generationSettings");
-    return <Popover open={open} onOpenChange={(next) => { if (disabled) return; if (next) measure(); setOpen(next); }} trigger="click" placement="topLeft" arrow={false} align={{ offset: [span.offset, 8] }} classNames={{ root: "generation-settings-popover" }} styles={{ container: { width: span.width, maxWidth: "calc(100vw - 16px)", padding: 0, borderRadius: 20, boxShadow: "0 12px 40px rgba(15,23,42,.1)", overflow: "hidden" } }} content={<div className="grok-scrollbar max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4">
-        <div className="text-[15px] font-medium leading-6 text-[#111827] dark:text-stone-100">{title}</div>
-        <div className="space-y-2">
-            <div className="text-[13px] font-medium leading-5 text-[#6B7280]">{t("workbench.model")}</div>
-            <ModelPicker className="!h-9 !rounded-full !border-[#E6E8EE] !bg-white !px-3 !text-[13px] !shadow-none dark:!border-stone-700 dark:!bg-stone-950" config={config} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" fullWidth onMissingConfig={() => openConfigDialog(false)} />
-        </div>
-        <VideoSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} tone="plain" showTitle={false} className="space-y-4" />
-    </div>}>
-        <div className="w-full">
-            <button ref={triggerRef} type="button" className="flex h-10 w-full items-center gap-2 rounded-full border border-[#E6E8EE] bg-white px-3 text-[13px] leading-5 text-[#111827] hover:bg-[#F7F8FA] disabled:opacity-40 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-white/10" disabled={disabled} aria-label={`${title}：${summary}`} title={summary} aria-expanded={open}>
-                <span className="size-3.5 shrink-0 rounded-full bg-[conic-gradient(#F97316,#7C3AED,#22C55E,#F97316)]" />
-                <span className="min-w-0 flex-1 truncate text-left">{summary}</span>
-                <ChevronUp className="size-3.5 shrink-0 text-[#6B7280]" />
-            </button>
-        </div>
-    </Popover>;
+    return <>
+        <button type="button" className="flex h-10 w-full items-center gap-2 rounded-full border border-[#E6E8EE] bg-white px-3 text-[13px] leading-5 text-[#111827] hover:bg-[#F7F8FA] disabled:opacity-40 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-white/10" disabled={disabled} aria-label={`${title}：${summary}`} title={summary} aria-expanded={open} onClick={() => setOpen(true)}>
+            <span className="size-3.5 shrink-0 rounded-full bg-[conic-gradient(#F97316,#7C3AED,#22C55E,#F97316)]" />
+            <span className="min-w-0 flex-1 truncate text-left">{summary}</span>
+            <ChevronUp className="size-3.5 shrink-0 text-[#6B7280]" />
+        </button>
+        <SettingsDialog open={open} title={title} onClose={() => setOpen(false)}>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <div className="text-[13px] font-medium leading-5 text-[#6B7280]">{t("workbench.model")}</div>
+                    <ModelPicker className="!h-9 !rounded-full !border-[#E6E8EE] !bg-white !px-3 !text-[13px] !shadow-none dark:!border-stone-700 dark:!bg-stone-950" config={config} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" fullWidth onMissingConfig={() => openConfigDialog(false)} />
+                </div>
+                <VideoSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} tone="plain" showTitle={false} className="space-y-4" />
+            </div>
+        </SettingsDialog>
+    </>;
 }
 
 function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedVideo; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void }) {

@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { Alert, App, Button, Input, Popover, Spin, Tooltip } from "antd";
+import { Alert, App, Button, Input, Spin, Tooltip } from "antd";
 import { ArrowLeft, ArrowUp, BotMessageSquare, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, History, Plus, RefreshCw, RotateCcw, Search, Square, X } from "lucide-react";
 import { ImageSettingsPanel, imageQualityLabel, imageQualityOptionsForModel } from "@/components/image-settings-panel";
+import { SettingsDialog } from "@/components/settings-dialog";
 import { ModelPicker } from "@/components/model-picker";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { inferMediaRatio, inferMediaScale } from "@/lib/media-size";
@@ -157,15 +158,15 @@ function CreativeAgentContent({ embedded = false }: { embedded?: boolean }) {
     return <div className={embedded ? "relative flex h-full min-h-0 w-full bg-white dark:bg-stone-950" : "contents"}>
         {embedded && <AgentThreadRail open={historyOpen} threads={historyThreads.map(item => ({ ...item, live: item.running || sendingMap[item.id] || imageRun?.threadId === item.id || (item.id === activeId && submitted) }))} activeId={activeId} ready={ready} working={working} onBack={() => setHistoryOpen(false)} onNew={() => { setHistoryOpen(false); void newThread(); }} onSelect={id => { setHistoryOpen(false); void run(() => useCreativeAgentStore.getState().select(id)); }} />}
         <div className={embedded ? `${historyOpen ? "hidden @min-[960px]/app:flex" : "flex"} relative min-h-0 min-w-0 flex-1 flex-col bg-white dark:bg-stone-950` : "contents"}>
-        {embedded ? <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center bg-transparent px-3 @min-[960px]/app:px-4">
-            <div className="pointer-events-auto relative z-10 flex w-12 justify-start @min-[960px]/app:w-24">
+        {embedded ? <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center bg-transparent px-6 @min-[960px]/app:px-4">
+            <div className="pointer-events-auto relative z-10 flex w-12 shrink-0 justify-start @min-[960px]/app:w-24">
                 <button type="button" className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] @min-[960px]/app:hidden dark:bg-stone-900 dark:text-stone-100" aria-label={reading ? "返回对话" : "对话历史"} onClick={() => { if (reading) setReadingId(null); else setHistoryOpen(true); }}><ChevronLeft className="size-5" /></button>
                 {reading && <button type="button" className="hidden size-9 place-items-center rounded-full border border-[#E6E8EE] bg-white text-[#111827] hover:bg-[#F3F4F6] @min-[960px]/app:grid dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100" aria-label="关闭方案" onClick={() => setReadingId(null)}><X className="size-4" /></button>}
             </div>
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-16 @min-[960px]/app:px-28">
-                <div className="pointer-events-auto max-w-full">{reading ? <TopCapsule title={reading.content.goal} seed={thread?.id || reading.itemId} live={submitted} /> : <CreativeAgentTitle key={activeId} capsule live={submitted} />}</div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-20 @min-[960px]/app:px-28">
+                <div className="pointer-events-auto min-w-0 max-w-[14rem] @min-[960px]/app:max-w-[16rem]">{reading ? <TopCapsule title={reading.content.goal} seed={thread?.id || reading.itemId} live={submitted} /> : <CreativeAgentTitle key={activeId} capsule live={submitted} />}</div>
             </div>
-            <div className="pointer-events-auto relative z-10 ml-auto flex w-12 justify-end @min-[960px]/app:w-24">{reading && <button type="button" className="rounded-full border border-[#E6E8EE] bg-white px-3 py-1 text-sm text-[#111827] hover:bg-[#F3F4F6] dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100" title="复制方案文本，没有公开链接" onClick={() => void sharePlan()}>分享</button>}</div>
+            <div className="pointer-events-auto relative z-10 ml-auto flex w-auto shrink-0 justify-end @min-[960px]/app:w-24">{reading && <button type="button" className="shrink-0 rounded-full border border-[#E6E8EE] bg-white px-3 py-1 text-sm text-[#111827] hover:bg-[#F3F4F6] dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100" title="复制方案文本，没有公开链接" onClick={() => void sharePlan()}>分享</button>}</div>
         </header> : <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
             <div className="flex min-w-0 flex-1 items-center gap-2">{reading ? <Button type="text" aria-label="关闭方案" icon={<ArrowLeft className="size-4" />} onClick={() => setReadingId(null)} /> : <BotMessageSquare className="size-4 shrink-0" />}<CreativeAgentTitle key={activeId} /></div>
             <div className="flex shrink-0 items-center gap-1">
@@ -319,13 +320,13 @@ function AgentThreadRail({ open, threads, activeId, ready, working, onBack, onNe
     const [searching, setSearching] = useState(false);
     const visible = threads.filter(item => `${item.title} ${item.preview}`.includes(query));
     return <nav aria-label="出图对话" className={`${open ? "flex" : "hidden @min-[960px]/app:flex"} absolute inset-0 z-30 w-full shrink-0 flex-col bg-[#F9FAFB] dark:bg-stone-900 @min-[960px]/app:static @min-[960px]/app:z-auto @min-[960px]/app:w-[300px] @min-[1440px]/workbench:w-[320px]`}>
-        <div className="flex items-center gap-2 px-4 pb-3 pt-4">
+        <div className="flex items-center gap-2 px-6 pb-3 pt-4 @min-[960px]/app:px-4">
             <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] @min-[960px]/app:hidden dark:bg-stone-800 dark:text-stone-100" aria-label="返回对话" onClick={onBack}><ChevronLeft className="size-5" /></button>
             <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] hover:bg-[#F3F4F6] dark:bg-stone-800 dark:text-stone-200" aria-label="搜索历史" aria-pressed={searching} onClick={() => setSearching(value => !value)}><Search className="size-4" /></button>
             <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] hover:bg-[#F3F4F6] disabled:opacity-40 dark:bg-stone-800 dark:text-stone-200" aria-label="新建对话" disabled={!ready || working} onClick={onNew}><Plus className="size-4" /></button>
         </div>
-        {searching && <div className="px-4 pb-3"><input aria-label="搜索历史" autoFocus value={query} placeholder="搜索对话" className="h-9 w-full rounded-full border border-[#E6E8EE] bg-white px-3 text-sm outline-none dark:border-stone-700 dark:bg-stone-950" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { setSearching(false); setQuery(""); } }} /></div>}
-        <div className="thin-scrollbar min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
+        {searching && <div className="px-6 pb-3 @min-[960px]/app:px-4"><input aria-label="搜索历史" autoFocus value={query} placeholder="搜索对话" className="h-9 w-full rounded-full border border-[#E6E8EE] bg-white px-3 text-sm outline-none dark:border-stone-700 dark:bg-stone-950" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { setSearching(false); setQuery(""); } }} /></div>}
+        <div className="thin-scrollbar min-h-0 flex-1 space-y-1.5 overflow-y-auto px-6 pb-4 @min-[960px]/app:px-3">
             {visible.map(item => <button type="button" key={item.id} onClick={() => onSelect(item.id)} title={`${item.title}\n${item.preview}`} className={`flex w-full min-w-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-left ${item.id === activeId ? "bg-[#F3F4F6] dark:bg-stone-800" : "hover:bg-[#F4F5F7] dark:hover:bg-white/10"}`}>
                 <AgentBotMark seed={item.id} motion={item.live ? "live" : "idle"} className="size-10" />
                 <span className="min-w-0 flex-1">
@@ -374,14 +375,14 @@ function TopCapsule({ title, seed = "agent", live = false, onOpenRename }: { tit
         document.addEventListener("mousedown", close);
         return () => document.removeEventListener("mousedown", close);
     }, [open]);
-    return <button ref={ref} type="button" aria-expanded={open} title={title} className={`inline-flex max-w-full origin-center items-center rounded-full bg-white py-1.5 pl-2 text-[15px] font-medium leading-6 text-[#111827] shadow-[0_1px_2px_rgba(15,23,42,.06),0_6px_16px_rgba(15,23,42,.08)] transition-[padding,box-shadow] duration-200 ease-out hover:shadow-[0_2px_6px_rgba(15,23,42,.08),0_10px_22px_rgba(15,23,42,.1)] active:scale-[0.98] dark:bg-stone-900 dark:text-stone-100 ${open ? "pr-2" : "pr-3.5"}`} onClick={() => {
+    return <button ref={ref} type="button" aria-expanded={open} title={title} className={`inline-flex min-w-0 max-w-full origin-center items-center rounded-full bg-white py-1.5 pl-2 text-[15px] font-medium leading-6 text-[#111827] shadow-[0_1px_2px_rgba(15,23,42,.06),0_6px_16px_rgba(15,23,42,.08)] transition-[padding,box-shadow] duration-200 ease-out hover:shadow-[0_2px_6px_rgba(15,23,42,.08),0_10px_22px_rgba(15,23,42,.1)] active:scale-[0.98] dark:bg-stone-900 dark:text-stone-100 ${open ? "pr-2" : "pr-3.5"}`} onClick={() => {
         setHop(true);
         window.setTimeout(() => setHop(false), 460);
         if (open && onOpenRename) onOpenRename();
         else setOpen(value => !value);
     }}>
         <AgentBotMark seed={seed} motion={hop ? "pop" : live ? "live" : "idle"} />
-        <span className="max-w-[16rem] truncate px-2">{title}</span>
+        <span className="min-w-0 max-w-full truncate px-2">{title}</span>
         <ChevronRight className={`size-4 shrink-0 text-[#111827] transition-all duration-200 ease-out ${open ? "ml-0.5 w-4 translate-x-0 opacity-100" : "ml-0 w-0 -translate-x-1 opacity-0"}`} />
     </button>;
 }
@@ -398,21 +399,6 @@ function ImageParamsButton({ compact = false }: { compact?: boolean }) {
     const openConfigDialog = useConfigStore(state => state.openConfigDialog);
     const theme = canvasThemes[useThemeStore(state => state.theme)];
     const [open, setOpen] = useState(false);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const [span, setSpan] = useState({ width: 380, offset: 0 });
-    const measure = () => {
-        const trigger = triggerRef.current;
-        if (!trigger) return;
-        const box = trigger.closest("[data-agent-composer]") as HTMLElement | null;
-        const limit = Math.min(box?.getBoundingClientRect().width ?? 380, window.innerWidth - 16);
-        setSpan({ width: Math.round(Math.min(380, limit)), offset: 0 });
-    };
-    useEffect(() => {
-        if (!open) return;
-        measure();
-        window.addEventListener("resize", measure);
-        return () => window.removeEventListener("resize", measure);
-    }, [open]);
     const model = config.imageModel;
     const name = shortModelName(modelOptionName(model)) || "未配置";
     const quality = imageQualityOptionsForModel(model).some(item => item.value === config.quality) ? config.quality : "auto";
@@ -421,20 +407,22 @@ function ImageParamsButton({ compact = false }: { compact?: boolean }) {
     const count = Number(config.count) || 1;
     const summary = [name, imageQualityLabel(quality), scale, ratio, String(count)].filter(Boolean).join(" · ");
     const pickerClass = "!h-9 !rounded-full !border-[#E6E8EE] !bg-white !px-3 !text-[13px] !shadow-none dark:!border-stone-700 dark:!bg-stone-950";
-    return <Popover open={open} onOpenChange={next => { if (next) measure(); setOpen(next); }} trigger="click" placement="topRight" arrow={false} align={{ offset: [0, 8] }} classNames={{ root: "generation-settings-popover" }} styles={{ container: { width: span.width, maxWidth: "calc(100vw - 16px)", padding: 0, borderRadius: 20, boxShadow: "0 12px 40px rgba(15,23,42,.1)", overflow: "hidden" } }} content={<div className="grok-scrollbar max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4" onMouseDown={event => event.stopPropagation()}>
-        <div className="text-[15px] font-medium leading-6 text-[#111827] dark:text-stone-100">模型参数</div>
-        <div className="space-y-2">
-            <div className="text-[13px] font-medium leading-5 text-[#6B7280]">Agent 模型</div>
-            <ModelPicker className={pickerClass} config={config} value={config.textModel} capability="text" fullWidth onChange={value => updateConfig("textModel", value)} onMissingConfig={() => openConfigDialog(false, "channels")} />
-        </div>
-        <div className="space-y-2">
-            <div className="text-[13px] font-medium leading-5 text-[#6B7280]">图像模型</div>
-            <ModelPicker className={pickerClass} config={config} value={model} capability="image" fullWidth onChange={value => { updateConfig("imageModel", value); if (!imageQualityOptionsForModel(value).some(item => item.value === config.quality)) updateConfig("quality", "auto"); }} onMissingConfig={() => openConfigDialog(false, "channels")} />
-        </div>
-        <ImageSettingsPanel config={config} qualityModel={model} theme={theme} tone="plain" showTitle={false} maxCount={10} onConfigChange={(key, value) => updateConfig(key, value)} className="space-y-4" />
-    </div>}>
-        {compact ? <button ref={triggerRef} type="button" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#E6E8EE] bg-white text-[13px] leading-5 text-[#111827] hover:bg-[#F7F8FA] @min-[640px]/composer:h-9 @min-[640px]/composer:w-auto @min-[640px]/composer:max-w-[420px] @min-[640px]/composer:justify-start @min-[640px]/composer:gap-1.5 @min-[640px]/composer:px-2.5 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-white/10" aria-label={`模型参数：${summary}`} title={summary} aria-expanded={open}><span className="size-3.5 shrink-0 rounded-full bg-[conic-gradient(#F97316,#7C3AED,#22C55E,#F97316)]" /><span className="hidden min-w-0 truncate text-left @min-[640px]/composer:block">{summary}</span><ChevronUp className="hidden size-3.5 shrink-0 text-[#6B7280] @min-[640px]/composer:block" /></button> : <button ref={triggerRef} type="button" className="flex h-8 w-max items-center gap-1 rounded-md px-1.5 text-xs text-[#6B7280] hover:bg-[#F3F4F6] dark:text-stone-300 dark:hover:bg-white/10" aria-label={`模型参数：${summary}`} title={summary} aria-expanded={open}><span className="whitespace-nowrap text-[#111827] dark:text-stone-100">{summary}</span><ChevronUp className="size-3 shrink-0" /></button>}
-    </Popover>;
+    return <>
+        {compact ? <button type="button" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#E6E8EE] bg-white text-[13px] leading-5 text-[#111827] hover:bg-[#F7F8FA] @min-[640px]/composer:h-9 @min-[640px]/composer:w-auto @min-[640px]/composer:max-w-[420px] @min-[640px]/composer:justify-start @min-[640px]/composer:gap-1.5 @min-[640px]/composer:px-2.5 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-white/10" aria-label={`模型参数：${summary}`} title={summary} aria-expanded={open} onClick={() => setOpen(true)}><span className="size-3.5 shrink-0 rounded-full bg-[conic-gradient(#F97316,#7C3AED,#22C55E,#F97316)]" /><span className="hidden min-w-0 truncate text-left @min-[640px]/composer:block">{summary}</span><ChevronUp className="hidden size-3.5 shrink-0 text-[#6B7280] @min-[640px]/composer:block" /></button> : <button type="button" className="flex h-8 w-max items-center gap-1 rounded-md px-1.5 text-xs text-[#6B7280] hover:bg-[#F3F4F6] dark:text-stone-300 dark:hover:bg-white/10" aria-label={`模型参数：${summary}`} title={summary} aria-expanded={open} onClick={() => setOpen(true)}><span className="whitespace-nowrap text-[#111827] dark:text-stone-100">{summary}</span><ChevronUp className="size-3 shrink-0" /></button>}
+        <SettingsDialog open={open} title="模型参数" onClose={() => setOpen(false)}>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <div className="text-[13px] font-medium leading-5 text-[#6B7280]">Agent 模型</div>
+                    <ModelPicker className={pickerClass} config={config} value={config.textModel} capability="text" fullWidth onChange={value => updateConfig("textModel", value)} onMissingConfig={() => openConfigDialog(false, "channels")} />
+                </div>
+                <div className="space-y-2">
+                    <div className="text-[13px] font-medium leading-5 text-[#6B7280]">图像模型</div>
+                    <ModelPicker className={pickerClass} config={config} value={model} capability="image" fullWidth onChange={value => { updateConfig("imageModel", value); if (!imageQualityOptionsForModel(value).some(item => item.value === config.quality)) updateConfig("quality", "auto"); }} onMissingConfig={() => openConfigDialog(false, "channels")} />
+                </div>
+                <ImageSettingsPanel config={config} qualityModel={model} theme={theme} tone="plain" showTitle={false} maxCount={10} onConfigChange={(key, value) => updateConfig(key, value)} className="space-y-4" />
+            </div>
+        </SettingsDialog>
+    </>;
 }
 
 function shortAgentTime(value: string) {

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>二级页结构</title>
+  <style>
+    :root{color-scheme:light;--line:#e6e8ee;--text:#111827;--muted:#6b7280;--bg:#f7f8fa}
+    *{box-sizing:border-box}html,body{margin:0;height:100%;background:#fff;color:var(--text);font:13px/20px -apple-system,"PingFang SC",sans-serif}
+    button,input{font:inherit}button{cursor:default}
+    .stage{min-height:100%;background:var(--bg);padding:28px}
+    .narrow .stage{padding:0;background:#fff}
+    .mask{position:fixed;inset:0;background:rgba(15,23,42,.28);display:grid;place-items:center}
+    .narrow .mask{place-items:stretch}.narrow .mask.center{place-items:center;padding:16px}
+    .modal{background:#fff;border:1px solid #fff;border-radius:16px;box-shadow:0 24px 80px rgba(15,23,42,.08)}
+    .drawer{height:100%;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column}
+    .hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;font-weight:600}
+    .x{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#6b7280}
+    .bd{min-height:0;overflow:auto}
+    .ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+    .btn{height:32px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:#fff}
+    .btn.black{border-color:#111827;background:#111827;color:#fff}
+    .field{display:grid;gap:6px;margin-bottom:14px}
+    .field span{font-weight:500}
+    .box{height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 12px;display:flex;align-items:center;color:#374151}
+    .pill{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:999px;background:#f3f4f6;color:#6b7280}
+    .pill.on{background:#111827;color:#fff}
+    .actions{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;width:max-content;max-width:100%;padding:6px 8px;border-radius:999px;background:#fff;box-shadow:0 8px 30px rgba(15,23,42,.08);overflow-x:auto}
+    .act{display:inline-flex;flex:none;align-items:center;gap:6px;height:32px;padding-right:8px;border:0;border-radius:999px;background:transparent;color:#374151;white-space:nowrap}
+    .dot{width:32px;height:32px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.06);display:grid;place-items:center;color:#6b7280}
+    .tag{display:inline-flex;height:22px;align-items:center;padding:0 8px;border-radius:6px;background:#f3f4f6;color:#374151;margin-right:6px}
+    .note{position:fixed;z-index:3;left:8px;right:8px;top:8px;margin:0;padding:8px 12px;background:#fff7ed;color:#9a3412;font-size:12px;line-height:18px;border-radius:8px;white-space:normal}
+    .cover{height:180px;border-radius:8px;background:#ece7df center/cover}
+    .prompt{white-space:pre-wrap;border-radius:8px;background:#f5f5f4;padding:12px;color:#57534e}
+    .split{display:grid;height:min(680px,calc(100dvh - 188px));overflow:auto;border:1px solid var(--line);border-radius:16px;background:#fff}
+    .wide .split{grid-template-columns:65% 35%;overflow:hidden}
+    .pic{height:256px;min-height:256px;background:#171922 center/contain no-repeat;color:#fff;display:grid;place-items:end start;padding:12px}.wide .pic{height:auto;min-height:0}
+    .narrow .mask.center{place-items:center;padding:24px 16px}
+    .narrow .mask.center>section{display:flex;flex-direction:column;width:calc(100vw - 32px)!important;max-width:calc(100vw - 32px)!important;min-width:0;max-height:calc(100dvh - 48px);margin:auto}
+    .narrow .split{height:auto;max-height:none;flex:1;min-height:0}
+    .narrow .pic{height:168px;min-height:168px}
+    .narrow .dot{width:16px;height:16px;font-size:11px}
+    .narrow .act{height:28px;gap:2px;padding-right:0;font-size:11px;min-width:0;max-width:100%}
+    .narrow .actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;min-width:0;justify-items:center;align-items:center;gap:0;padding:6px 4px;overflow:hidden}
+    .meta{padding:16px;display:flex;flex-direction:column;gap:12px}
+    .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .card{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;text-align:left;padding:0}
+    .card i{display:block;aspect-ratio:4/3;background:#d7dde6}
+    .card b{display:block;padding:8px 10px;font-weight:500}
+    .json{margin:0;padding:16px;white-space:pre-wrap;word-break:break-all;line-height:24px}
+    .row{display:flex;gap:8px;align-items:center}
+    .search{flex:1;height:40px;border:1px solid var(--line);border-radius:999px;padding:0 14px;background:#fff}
+  </style>
+</head>
+<body>
+<script>
+const q=new URLSearchParams(location.search);
+const scene=q.get("scene")||"prompt";
+const narrow=q.get("layout")==="narrow";
+document.body.className=narrow?"narrow":"wide";
+const photo="../../../web/public/home/inspirations/photo-solver-v1.png";
+const cancel=`<button class="btn">取消</button>`;
+const save=`<button class="btn black">保存</button>`;
+const head=(title,extra)=>`<div class="hd"><b>${title}</b><div class="row">${narrow?"":extra||""}<button class="x" aria-label="关闭">×</button></div></div>`;
+const pages={
+  prompt(){
+    const body=`<div class="bd" style="height:${narrow?"calc(100dvh - 58px)":"560px"};display:flex;flex-direction:column;padding:0 20px 16px"><div class="cover" style="background-image:url('${photo}')"></div><div style="flex:1;overflow:auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:12px;padding:12px 0"><span class="tag">摄影</span><span class="tag">产品</span><p style="color:var(--muted)">说明文字，13px。</p><div class="prompt">封面提示词预览</div><p>完整提示词在这里滚动。窄屏铺满视口，宽屏 720。</p><div style="color:var(--muted);font-size:12px">创建于 2026年10月31日 · 更新于 2026年11月2日</div></div><div style="padding-top:12px"><div class="actions"><button class="act"><span class="dot">→</span>使用场景模板</button><button class="act"><span class="dot">⧉</span>复制提示词</button><button class="act"><span class="dot">＋</span>加入资产</button></div></div></div>`;
+    return `<div class="mask"><section class="modal" style="${narrow?"width:100vw;height:100dvh;border-radius:0":"width:720px"}">${head("产品摄影")}${body}</section></div>`;
+  },
+  channel(){
+    const actions=`${cancel}${save}`;
+    return `<div class="mask" style="justify-content:end"><aside class="drawer" style="width:${narrow?"100vw":"640px"}">${head("编辑渠道",actions)}<div class="bd" style="padding:8px 20px 20px"><div style="display:grid;grid-template-columns:${narrow?"1fr":"1fr 1fr"};gap:12px"><label class="field"><span>名称</span><div class="box">主渠道</div></label><label class="field"><span>协议</span><div class="box">OpenAI 兼容</div></label><label class="field" style="grid-column:1/-1"><span>接口地址</span><div class="box">https://api.example.com</div></label><label class="field" style="grid-column:1/-1"><span>API Key</span><div class="box">已加密保存，留空保持原 Key</div></label></div><div class="row" style="justify-content:space-between;margin:18px 0 10px"><div><b>模型</b><div style="color:var(--muted);font-size:12px">已选 2 个</div></div><button class="btn black">选择模型</button></div><div style="border:1px solid var(--line);border-radius:8px;padding:8px"><div class="row"><span style="flex:1">gpt-image-2.5</span><span class="pill on">图片</span><button class="btn">脚本</button><button class="btn">删除</button></div></div></div>${narrow?`<div class="ft">${actions}</div>`:""}</aside></div>`;
+  },
+  source(){
+    const actions=`${cancel}${save}`;
+    return `<div class="mask" style="justify-content:end"><aside class="drawer" style="width:${narrow?"100vw":"560px"}">${head("编辑来源",actions)}<div class="bd" style="padding:8px 20px 20px"><label class="field"><span>名称</span><div class="box">产品摄影库</div></label><label class="field"><span>JSON URL</span><div class="box">https://example.com/prompts.json</div></label><label class="field"><span>主页</span><div class="box">https://example.com</div></label><div class="row" style="justify-content:space-between;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0"><b>发布到灵感列表</b><span class="pill on">开</span></div><b>JSON 格式</b><pre class="prompt">[{ "title": "Product photo", "prompt": "..." }]</pre></div>${narrow?`<div class="ft">${actions}</div>`:""}</aside></div>`;
+  },
+  picker(){
+    const card=(n)=>`<button class="card"><i style="background:#c9d4c2 url('${photo}') center/cover"></i><b>素材 ${n}</b></button>`;
+    return `<p class="note">现有弹窗宽度写死 860。窄屏没有改成视口宽，这一页会超出。本次只核对，不改。</p><div class="mask"><section class="modal" style="width:860px;max-width:none;padding-bottom:16px">${head("选择资产")}<div class="bd" style="height:520px;padding:0 20px;display:flex;flex-direction:column;gap:14px"><div class="row"><div class="search">搜索</div><span class="pill on">全部</span><span class="pill">文字</span><span class="pill">图片</span><span class="pill">视频</span><span class="pill">音频</span></div><div class="cards">${[1,2,3,4,5,6,7,8].map(card).join("")}</div><div style="text-align:center;color:var(--muted)">1 / 2 · 每页 8 项</div></div></section></div>`;
+  },
+  asset(){
+    if(narrow){
+      return `<div class="mask" style="background:rgba(0,0,0,.6);display:flex;flex-direction:column;padding:0"><div class="row" style="justify-content:flex-end;padding:16px 20px"><button class="x" style="width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.16);color:#fff">×</button></div><div style="flex:1;display:grid;place-items:center;padding:0 16px"><img src="${photo}" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div><div style="display:flex;justify-content:center;padding:16px 20px 32px"><div class="actions" style="background:rgba(0,0,0,.4);color:#fff;box-shadow:none"><button class="act" style="color:#fff">上下</button><button class="act" style="color:#fff">左右</button><button class="act" style="color:#fff">左转</button><button class="act" style="color:#fff">右转</button><button class="act" style="color:#fff">缩小</button><button class="act" style="color:#fff">放大</button></div></div></div>`;
+    }
+    return `<div class="mask center"><section style="width:min(1280px,calc(100vw - 32px));max-width:100%"><p class="note">宽屏才是这张详情卡。高度固定为 min(680px, 视口减 188px)。</p><div class="split"><div class="pic" style="background-image:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),url('${photo}')"><button class="btn">查看大图</button></div><div class="meta"><h2 style="margin:0;font-size:16px;line-height:24px">图 1 衣服改成黑色</h2><div><div class="row" style="justify-content:space-between"><span style="color:var(--muted)">提示词</span><button class="act"><span class="dot">⧉</span>复制</button></div><p class="prompt">图 1 衣服改成黑色，然后上身</p></div><div><span class="tag">生成结果</span><span class="tag">图片</span></div><div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;border-top:1px solid var(--line);padding-top:12px"><span style="color:#a8a29e">来源</span><span>内容库</span><span style="color:#a8a29e">模型</span><span>image-2.5-sunburst</span><span style="color:#a8a29e">创建时间</span><span>2026/10/31 18:27:00</span><span style="color:#a8a29e">规格</span><span>1024×1024</span></div></div></div><div style="display:flex;justify-content:center;max-width:100%;padding-top:8px"><div class="actions"><button class="act"><span class="dot">↓</span>下载</button><button class="act"><span class="dot">↻</span>引用</button><button class="act"><span class="dot">↺</span>重新生成</button><button class="act"><span class="dot">★</span>收藏</button><button class="act"><span class="dot">⌫</span>删除</button></div></div></section></div>`;
+  },
+  log(){
+    return `<div class="mask" style="justify-content:end"><aside class="drawer" style="width:${narrow?"100vw":"min(600px,100vw)"}">${head("日志元数据")}<pre class="json">{
+  "callId": "call_01",
+  "taskType": "image",
+  "status": "succeeded",
+  "model": "image-2.5-sunburst"
+}</pre></aside></div>`;
+  }
+};
+document.body.innerHTML=`<main class="stage">${(pages[scene]||pages.prompt)()}</main>`;
+</script>
+</body>
+</html>

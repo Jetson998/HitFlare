@@ -35,6 +35,7 @@ export async function createAuthStore(dataDir) {
         isUserActive: userId => Boolean(db.prepare("SELECT 1 FROM users WHERE id=? AND tenant_id=? AND status='active'").get(userId, DEFAULT_TENANT_ID)),
         onLifecycle: listener => { lifecycle.on("revoke", listener); return () => lifecycle.off("revoke", listener); },
         watchSession: (req, res) => watchSession(db, lifecycle, req, res),
+        users: () => db.prepare("SELECT id, username FROM users").all().map(row=>({id:row.id,username:row.username})),
         audits: () => db.prepare("SELECT * FROM auth_audit WHERE tenant_id=? ORDER BY created_at DESC,id").all(DEFAULT_TENANT_ID).map(row=>({id:row.id,actorUserId:row.actor_user_id,targetId:row.target_user_id,action:row.action,result:row.result,requestId:row.request_id,errorCode:row.error_code,createdAt:row.created_at})),
         recordFailure(req,path,errorCode) {const action=accountAction(path,req.method);if(action && !req.authAuditRecorded){const actor=userFromRequest(db,req);audit(db,actor?.id,db.prepare("SELECT id FROM users WHERE id=? AND tenant_id=?").get(path.split("/")[4] || "",DEFAULT_TENANT_ID)?.id || null,action,"failed",req.requestId,errorCode,actor?.tenantId);req.authAuditRecorded=true;}},
     };

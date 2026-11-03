@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HitFlare · 现网核对后的材质评审</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f3f3f2;color:#222326;font:13px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}button,select{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible{outline:2px solid #5657bd;outline-offset:3px}.review-head{padding:24px 32px 18px;border-bottom:1px solid #dededc;background:#fafafa}.eyebrow{font-size:11px;letter-spacing:.14em;color:#737578}.heading{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin:5px 0 8px}h1{margin:0;font-size:24px;line-height:34px;font-weight:600;letter-spacing:-.02em}.desc{color:#65676a;margin:0}.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:18px}.seg{display:flex;padding:3px;background:#e9e9e7;border-radius:9px;gap:2px}.seg button{border:0;background:transparent;padding:6px 12px;color:#64676c;border-radius:6px}.seg button[aria-pressed=true]{background:white;color:#202226;box-shadow:0 1px 3px #0000000d}.controls label{display:flex;align-items:center;gap:8px;color:#666}.controls select{padding:5px;border:1px solid #ddd;border-radius:6px;background:white}.scenes{display:flex;gap:6px;flex-wrap:wrap;padding:16px 32px 10px}.scenes button{padding:7px 12px;border:1px solid transparent;background:transparent;border-radius:20px;color:#686b70}.scenes button[aria-pressed=true]{color:#17191c;background:#fff;border-color:#ddd}.board{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:24px;padding:12px 32px 28px;align-items:start}.frame-label{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:12px;color:#707276}.frame-label strong{font-weight:500;color:#26282b}.device{position:relative;width:100%;overflow:hidden;border:1px solid #d5d7d9;box-shadow:0 16px 40px -28px #0004;border-radius:12px;background:#fff}.device iframe{display:block;position:absolute;left:0;top:0;border:0;transform-origin:0 0}.notes{margin:0 32px 32px;padding:18px 0;border-top:1px solid #ddd;display:grid;grid-template-columns:repeat(3,1fr);gap:28px;color:#696d72;font-size:12px}.notes b{display:block;color:#303237;margin-bottom:5px;font-size:13px;font-weight:500}.notes p{margin:0}.details{padding:0 32px 28px;color:#777;font-size:12px}.details a{color:inherit}body[data-theme=dark]{background:#202124;color:#ececef}body[data-theme=dark] .review-head{background:#1a1b1d;border-color:#393a3e}body[data-theme=dark] .desc,body[data-theme=dark] .notes{color:#babcc3}body[data-theme=dark] h1,body[data-theme=dark] .frame-label strong,body[data-theme=dark] .notes b{color:#f0f1f4}body[data-theme=dark] .device{border-color:#424348}body[data-theme=dark] .notes{border-color:#3b3c40}body[data-theme=dark] .scenes button{color:#b9bbc2}body[data-theme=dark] .scenes button[aria-pressed=true]{background:#36373b;border-color:#555;color:#fff}@media(max-width:950px){.board{grid-template-columns:1fr}.phone{max-width:390px;justify-self:center;width:100%}.notes{grid-template-columns:1fr}.review-head{padding:20px}.board,.scenes{padding-inline:20px}}
+  </style>
+</head>
+<body>
+  <header class="review-head">
+    <div class="eyebrow">HITFLARE / VERIFIED LAYOUT</div>
+    <div class="heading"><h1>第一组样板：材质和状态</h1><span class="desc">结构沿用线上，这一轮只定材质和状态。</span></div>
+    <p class="desc">窄屏资产点图不另画。二级页结构在 <a href="structure-review.html">structure-review.html</a>。</p>
+    <div class="controls">
+      <div class="seg" aria-label="材质"><button data-material="flat" aria-pressed="false">线上基线</button><button data-material="glass" aria-pressed="true">玻璃候选</button></div>
+      <div class="seg" aria-label="主题"><button data-theme="light" aria-pressed="true">浅色</button><button data-theme="dark" aria-pressed="false">深色</button></div>
+      <label>宽屏画板<select id="width"><option value="1440">1440 × 900</option><option value="1920">1920 × 1080</option></select></label>
+    </div>
+  </header>
+  <nav class="scenes" aria-label="设计场景"></nav>
+  <main class="board">
+    <section><div class="frame-label"><strong>宽屏 / 同一页面</strong><span id="wide-label">1440 × 900</span></div><div class="device" id="desktop"><iframe title="宽屏设计预览"></iframe></div></section>
+    <section class="phone"><div class="frame-label"><strong>窄屏 / 同一页面</strong><span>390 × 844</span></div><div class="device" id="mobile"><iframe title="窄屏设计预览"></iframe></div></section>
+  </main>
+  <aside class="notes"><div><b>01 / 扁平，不靠阴影凸起</b><p>控件没有投影和高光。状态只换填充。参数条保持原来的白底胶囊和细边，只留很轻的投影。参考图空态加号沿用这一套，尺寸仍是 64 方块。</p></div><div><b>02 / 实色的东西继续实色</b><p>生成按钮、选中胶囊、提示词和输入框不透明。禁用只换字色和底色，不把整颗控件淡掉。焦点是 2px 近黑轮廓，不用紫色。</p></div><div><b>03 / 这还不是全套</b><p>这一组只覆盖图片工作台、内容库、模型参数、参考图选资产和两种预览。灵感、配置、后台、首页和 Agent 头像还没画。不是施工单。</p></div></aside>
+  <div class="details">“线上基线”保留线上渲染结构与样式，图片换为仓库示例；不是完整业务应用。记录截图在 live-audit/，差异清单见 UI_LIVE_DESIGN_AUDIT_V3.md。宽屏画板支持 1440 / 1920，窄屏 390。切换场景用于设计评审，生成、添加、保存均不执行真实操作。</div>
+  <script>
+    const scenes=[['states','控件状态'],['workbench-empty','参考图 · 空态'],['workbench','参考图 · 已添加'],['reference-menu','参考图 · 添加菜单'],['results','生成结果'],['library','内容库'],['library-light','内容库 · 轻度预览'],['settings','模型参数'],['picker','参考图 · 选择资产'],['light','轻度预览'],['heavy','审读预览'],['specimen','材质实验（非页面）']];
+    const params=new URLSearchParams(location.search);let scene=params.get('scene')||'states',theme=params.get('theme')||'light',material=params.get('material')||'glass';
+    document.querySelector('.scenes').innerHTML=scenes.map(([id,label])=>`<button data-scene="${id}">${label}</button>`).join('');
+    const frames=[{node:document.querySelector('#desktop'),width:1440,height:900},{node:document.querySelector('#mobile'),width:390,height:844}];
+    function fit(){for(const frame of frames){const factor=frame.node.clientWidth/frame.width;frame.node.style.height=`${frame.height*factor}px`;Object.assign(frame.node.firstElementChild.style,{width:`${frame.width}px`,height:`${frame.height}px`,transform:`scale(${factor})`});}}
+    function render(){document.body.dataset.theme=theme;document.querySelectorAll('[data-material]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.material===material));document.querySelectorAll('button[data-theme]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.theme===theme));document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.scene===scene));const shown=scene==='library-light'?'flat':material;for(const frame of frames){frame.node.firstElementChild.src=`glass-live-scene.html?scene=${scene}&theme=${theme}&material=${shown}&revision=liveasset`;}fit();}
+    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.material)material=b.dataset.material;else if(b.dataset.theme)theme=b.dataset.theme;else if(b.dataset.scene)scene=b.dataset.scene;else return;render();});
+    document.querySelector('#width').addEventListener('change',e=>{frames[0].width=Number(e.target.value);frames[0].height=frames[0].width===1440?900:1080;document.querySelector('#wide-label').textContent=`${frames[0].width} × ${frames[0].height}`;fit();});
+    new ResizeObserver(fit).observe(document.querySelector('.board'));render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760">
+<rect x="0" y="0" width="1280" height="760" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">登录</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">深色聚焦页。不退回白卡片。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<rect x="28" y="96" width="760" height="520" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="28" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">宽屏 · 卡片靠右</text>
+<rect x="28" y="96" width="760" height="520" rx="16" fill="#171412" stroke="none" stroke-width="0"/>
+<rect x="56" y="120" width="120" height="16" rx="3" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="56" y="154" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#D6D3D1" text-anchor="start">Logo 180</text>
+<rect x="470" y="180" width="270" height="340" rx="8" fill="#161413" stroke="#FFFFFF" stroke-width="1"/>
+<text x="494" y="220" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="18" font-weight="650" fill="#FFFFFF" text-anchor="start">Sign in</text>
+<rect x="494" y="248" width="222" height="40" rx="8" fill="#F5F5F4" stroke="none" stroke-width="0"/>
+<rect x="494" y="300" width="222" height="40" rx="8" fill="#F5F5F4" stroke="none" stroke-width="0"/>
+<rect x="494" y="360" width="222" height="44" rx="8" fill="#FF6B35" stroke="none" stroke-width="0"/>
+<text x="605.0" y="386.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">登录</text>
+<text x="494" y="430" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#D6D3D1" text-anchor="start">最宽 380，玻璃卡</text>
+<rect x="820" y="96" width="360" height="520" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="820" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">窄屏 · 卡片落底</text>
+<rect x="820" y="96" width="360" height="520" rx="16" fill="#171412" stroke="none" stroke-width="0"/>
+<rect x="840" y="116" width="90" height="14" rx="3" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="840" y="148" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#D6D3D1" text-anchor="start">Logo 142</text>
+<rect x="840" y="390" width="320" height="190" rx="8" fill="#161413" stroke="#FFFFFF" stroke-width="1"/>
+<text x="860" y="422" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#FFFFFF" text-anchor="start">Sign in</text>
+<rect x="860" y="440" width="280" height="32" rx="8" fill="#F5F5F4" stroke="none" stroke-width="0"/>
+<rect x="860" y="480" width="280" height="32" rx="8" fill="#F5F5F4" stroke="none" stroke-width="0"/>
+<rect x="860" y="524" width="280" height="36" rx="8" fill="#FF6B35" stroke="none" stroke-width="0"/>
+<text x="1000.0" y="546.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">登录</text>
+<text x="28" y="660" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">橙色登录按钮只留在登录页，不进入列表或工作台。窄屏左右 20px，卡片仍最宽 380。</text>
+<text x="28" y="682" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">背景、玻璃卡和按钮颜色不改。这张图只说明卡片在宽屏靠右、窄屏落底。</text>
+</svg>

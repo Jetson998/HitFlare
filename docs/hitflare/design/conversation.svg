@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820">
+<rect x="0" y="0" width="1280" height="820" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">对话</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">只收外壳。气泡和方案不要照这张图重画。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<rect x="28" y="96" width="760" height="560" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="28" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">宽屏</text>
+<rect x="28" y="96" width="180" height="560" rx="16" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<line x1="208" y1="96" x2="208" y2="656" stroke="#E7E5E4" stroke-width="1"/>
+<rect x="48" y="116" width="32" height="32" rx="16" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="88" y="116" width="32" height="32" rx="16" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="48" y="170" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">无「新对话」文字</text>
+<text x="48" y="188" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">无今天 / 更早</text>
+<rect x="44" y="210" width="140" height="52" rx="10" fill="#F3F4F6" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="54" y="222" width="24" height="24" rx="12" fill="#2563EB" stroke="none" stroke-width="0"/>
+<text x="84" y="238" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">标题</text>
+<rect x="44" y="274" width="140" height="52" rx="10" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="54" y="286" width="24" height="24" rx="12" fill="#2563EB" stroke="none" stroke-width="0"/>
+<text x="84" y="302" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">标题</text>
+<rect x="44" y="338" width="140" height="52" rx="10" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="54" y="350" width="24" height="24" rx="12" fill="#2563EB" stroke="none" stroke-width="0"/>
+<text x="84" y="366" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">标题</text>
+<rect x="44" y="402" width="140" height="52" rx="10" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="54" y="414" width="24" height="24" rx="12" fill="#2563EB" stroke="none" stroke-width="0"/>
+<text x="84" y="430" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">标题</text>
+<rect x="430" y="112" width="180" height="32" rx="16" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="520.0" y="132.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">标题胶囊</text>
+<rect x="430" y="112" width="180" height="32" rx="16" fill="none" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="250" y="180" width="220" height="48" rx="16" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<rect x="360" y="244" width="360" height="64" rx="16" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="376" y="272" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">气泡占位，结构不重画</text>
+<rect x="250" y="560" width="500" height="72" rx="20" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="270" y="602" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">输入留在底部</text>
+<rect x="680" y="578" width="52" height="36" rx="18" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="706.0" y="600.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">发送</text>
+<rect x="820" y="96" width="400" height="560" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="820" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">窄屏</text>
+<rect x="836" y="112" width="36" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="847" y="135" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#111827" text-anchor="start">‹</text>
+<rect x="900" y="114" width="180" height="32" rx="16" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="990.0" y="134.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">标题最多 14rem</text>
+<rect x="900" y="114" width="180" height="32" rx="16" fill="none" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="1100" y="116" width="64" height="28" rx="14" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="1132.0" y="134.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">分享</text>
+<rect x="1100" y="116" width="64" height="28" rx="14" fill="none" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="860" y="200" width="180" height="44" rx="14" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<rect x="900" y="260" width="280" height="56" rx="14" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="836" y="560" width="36" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="880" y="560" width="220" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="1110" y="560" width="64" height="36" rx="18" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="1142.0" y="582.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">发送</text>
+<text x="836" y="548" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">参数只留图标，和输入、发送同一行</text>
+<text x="28" y="700" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">窄屏标题居中截断，不压住返回和分享。宽屏胶囊最长约 16rem。</text>
+<text x="28" y="722" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">参数图标切换用创作区自己的 640px 容器，不是新的全局断点。</text>
+<text x="28" y="744" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">头像以后用 Studio 的云朵、兴奋、蓝色一张。图里的蓝圆只是占位，不是正式素材。</text>
+</svg>

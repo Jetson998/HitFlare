@@ -10,16 +10,17 @@ export async function managementRequest<T>(path: string, method = "GET", body?: 
     return data;
 }
 export type CallLog = {
-    ownerUserId:string; taskType:string; taskId:string; callId:string; requestId:string|null; channelId:string|null; model:string; status:string; createdAt:string;
+    ownerUserId:string; username:string|null; taskType:string; modelCapability:string|null; taskId:string; callId:string; requestId:string|null; channelId:string|null; model:string; status:string; createdAt:string;
     stage?:string; attemptNo:number; slotIndex:number|null; retryOfCallId:string|null; dispatchedAt:string|null; durationMs:number|null; finishedAt:string|null;
-    upstreamHttpStatus:number|null; upstreamErrorCode:string|number|null; upstreamErrorType:string|number|null; upstreamRequestId:string|number|null;
+    upstreamHttpStatus:number|null; upstreamErrorCode:string|number|null; upstreamErrorType:string|number|null; upstreamRequestId:string|number|null; upstreamErrorMessage:string|null;
     appHttpStatus:number|null; appErrorCode:string|null; reportSource:string; executionMode:string; usage:Record<string,unknown>|null; usageSource:string|null; producedOutputCount:number|null;
 };
-export type AuditLog = {id:string;actorUserId:string;targetId:string|null;action:string;result:string;requestId:string|null;errorCode:string|null;createdAt:string};
-export type ApplicationErrorLog = {id:string;ownerUserId:string|null;requestId:string;method:string;route:string;appHttpStatus:number;appErrorCode:string;createdAt:string};
+export type AuditLog = {id:string;actorUserId:string;actorUsername:string|null;targetId:string|null;targetUsername:string|null;action:string;result:string;requestId:string|null;errorCode:string|null;createdAt:string};
+export type ApplicationErrorLog = {id:string;ownerUserId:string|null;username:string|null;requestId:string;method:string;route:string;appHttpStatus:number;appErrorCode:string;createdAt:string};
 export type AdminLogs = {
     calls:CallLog[];operations:Record<string,unknown>[];audit:AuditLog[];errors:ApplicationErrorLog[];
     summary:{taskCount:number;callCount:number;operationCount:number;producedOutputCount:number;savedOutputCount:number;usageReportedCallCount:number;usageMissingCallCount:number;usageTotals:Record<string,number>|null;costByCurrency:Record<string,number>|null};
+    options?:{models:string[]};
 };
 export type StorageDiagnostics = {
     bytes:number;objects:number;orphanObjects:number;missingObjects:number;incompleteObjects:number;partialObjects:number;unindexedFiles:number;

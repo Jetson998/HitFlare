@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="980" viewBox="0 0 1280 980">
+<rect x="0" y="0" width="1280" height="980" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">弹层</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">窄屏判断用视口 767px。页面内部仍用容器宽度。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<text x="28" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="start">宽度档</text>
+<rect x="28" y="210.0" width="150" height="80" rx="10" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="103" y="250" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="18" font-weight="650" fill="#1C1917" text-anchor="middle">440</text>
+<text x="103" y="280" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#44403C" text-anchor="middle">模型参数</text>
+<text x="28" y="310" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">已发布，不放宽</text>
+<rect x="208" y="196.0" width="150" height="108" rx="10" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="283" y="250" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="18" font-weight="650" fill="#1C1917" text-anchor="middle">480</text>
+<text x="283" y="280" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#44403C" text-anchor="middle">短确认</text>
+<text x="208" y="310" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">420 以后并入</text>
+<rect x="388" y="182.0" width="150" height="136" rx="10" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="463" y="250" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="18" font-weight="650" fill="#1C1917" text-anchor="middle">640</text>
+<text x="463" y="280" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#44403C" text-anchor="middle">表单抽屉</text>
+<text x="388" y="310" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">560 / 600 以后并入</text>
+<rect x="568" y="168.0" width="150" height="164" rx="10" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="643" y="250" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="18" font-weight="650" fill="#1C1917" text-anchor="middle">720</text>
+<text x="643" y="280" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#44403C" text-anchor="middle">灵感详情</text>
+<text x="568" y="310" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">窄屏铺满</text>
+<rect x="748" y="154.0" width="150" height="192" rx="10" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="823" y="250" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="18" font-weight="650" fill="#1C1917" text-anchor="middle">960</text>
+<text x="823" y="280" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#44403C" text-anchor="middle">选择网格</text>
+<text x="748" y="310" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#9F1239" text-anchor="start">不超过视口</text>
+<text x="28" y="348" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">配置总层只留 min(1080px, 视口 - 32)。资产详情只留 min(1280px, 视口 - 32)。画布编辑器弹窗不收。</text>
+<rect x="28" y="400" width="560" height="500" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="28" y="390" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">审读预览 · 生成图</text>
+<rect x="28" y="400" width="560" height="500" rx="16" fill="#0A0A0A" stroke="none" stroke-width="0"/>
+<text x="48" y="436" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">1 / 3</text>
+<rect x="360" y="416" width="40" height="28" rx="14" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="380.0" y="434.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">藏</text>
+<rect x="406" y="416" width="40" height="28" rx="14" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="426.0" y="434.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">下</text>
+<rect x="452" y="416" width="40" height="28" rx="14" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="472.0" y="434.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">存</text>
+<rect x="498" y="416" width="40" height="28" rx="14" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="518.0" y="434.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">关</text>
+<rect x="180" y="470" width="240" height="280" rx="8" fill="#292524" stroke="none" stroke-width="0"/>
+<text x="300" y="610" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#D6D3D1" text-anchor="middle">生成图</text>
+<text x="48" y="780" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">宽屏可留左右按钮</text>
+<text x="48" y="802" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">窄屏不留，改底端缩略图</text>
+<rect x="300" y="820" width="40" height="40" rx="6" fill="#292524" stroke="#44403C" stroke-width="2"/>
+<rect x="352" y="820" width="40" height="40" rx="6" fill="#292524" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="404" y="820" width="40" height="40" rx="6" fill="#292524" stroke="#44403C" stroke-width="2"/>
+<rect x="640" y="400" width="560" height="500" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="640" y="390" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">轻度预览 · 参考图、内容库</text>
+<rect x="640" y="400" width="560" height="500" rx="16" fill="#5C5C5C" stroke="none" stroke-width="0"/>
+<text x="660" y="436" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">1 / 3</text>
+<rect x="1100" y="416" width="48" height="28" rx="14" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="1124.0" y="434.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">关闭</text>
+<rect x="790" y="480" width="240" height="260" rx="8" fill="#D6D3D1" stroke="none" stroke-width="0"/>
+<text x="910" y="610" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#44403C" text-anchor="middle">参考图</text>
+<text x="660" y="780" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">右上只有关闭</text>
+<text x="660" y="802" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">窄屏同样不画左右按钮</text>
+<text x="660" y="824" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">多图时底端同样用缩略图</text>
+<rect x="860" y="848" width="28" height="28" rx="4" fill="#D6D3D1" stroke="#44403C" stroke-width="2"/>
+<rect x="896" y="848" width="28" height="28" rx="4" fill="#D6D3D1" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="932" y="848" width="28" height="28" rx="4" fill="#D6D3D1" stroke="#44403C" stroke-width="2"/>
+<text x="28" y="940" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">翻转、旋转、缩放在画廊下面单独一行，超出后横滑。拖动只移动画面，不切图。变换不改原图。</text>
+</svg>

@@ -1,4 +1,5 @@
 import { ArrowRight, Copy, FileText, FolderPlus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Modal, Tag } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -7,9 +8,17 @@ import { Link } from "react-router-dom";
 
 export function PromptDetailDialog({ prompt, onClose, onCopy, onSaveAsset }: { prompt: Prompt | null; onClose: () => void; onCopy: (prompt: string) => void; onSaveAsset?: (prompt: Prompt) => void }) {
     const { i18n, t } = useTranslation();
+    const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+    useEffect(() => {
+        const query = window.matchMedia("(max-width: 767px)");
+        const update = () => setNarrow(query.matches);
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, []);
 
     return (
-        <Modal title={prompt?.title} open={Boolean(prompt)} onCancel={onClose} footer={null} width={720} centered styles={{ body: { height: "calc(85vh - 55px)", overflow: "hidden" } }}>
+        <Modal title={prompt?.title} open={Boolean(prompt)} onCancel={onClose} footer={null} width={narrow ? "100vw" : 720} centered={!narrow} style={narrow ? { top: 0, margin: 0, maxWidth: "100vw", paddingBottom: 0 } : undefined} classNames={narrow ? { wrapper: "!p-0", container: "!m-0 !h-dvh !max-w-none !rounded-none" } : undefined} styles={{ body: { height: narrow ? "calc(100dvh - 57px)" : "calc(85vh - 55px)", overflow: "hidden" } }}>
             {prompt ? (
                 <div className="flex h-full min-h-0 flex-col">
                     <div className="shrink-0 space-y-3 pb-4">

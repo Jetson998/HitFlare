@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820">
+<rect x="0" y="0" width="1280" height="820" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">首页</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">只收边距和排列。品牌结构不改。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<rect x="28" y="96" width="760" height="620" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="28" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">宽屏 · 内容最宽 1320</text>
+<text x="408" y="180" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="22" font-weight="650" fill="#1C1917" text-anchor="middle">热流即引，创作即闪耀。</text>
+<text x="408" y="208" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="middle">48 / 60，只在品牌区</text>
+<rect x="300" y="228" width="96" height="44" rx="8" fill="#6252E8" stroke="none" stroke-width="0"/>
+<text x="348.0" y="254.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">开始创作</text>
+<rect x="408" y="228" width="96" height="44" rx="8" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="456.0" y="254.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">场景</text>
+<rect x="408" y="228" width="96" height="44" rx="8" fill="none" stroke="#E4E6EC" stroke-width="1"/>
+<text x="64" y="310" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="start">区域标题 24 / 32</text>
+<rect x="64" y="340" width="210" height="250" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<rect x="76" y="352" width="186" height="150" rx="8" fill="#F8F9FB" stroke="none" stroke-width="0"/>
+<text x="76" y="530" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">场景卡</text>
+<rect x="294" y="340" width="210" height="250" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<rect x="306" y="352" width="186" height="150" rx="8" fill="#F8F9FB" stroke="none" stroke-width="0"/>
+<text x="306" y="530" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">场景卡</text>
+<rect x="524" y="340" width="210" height="250" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<rect x="536" y="352" width="186" height="150" rx="8" fill="#F8F9FB" stroke="none" stroke-width="0"/>
+<text x="536" y="530" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">场景卡</text>
+<text x="64" y="620" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">三张卡保持卡片，不拉成通栏</text>
+<rect x="820" y="96" width="360" height="620" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="820" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">窄屏 · 品牌标题 32 / 42</text>
+<text x="1000" y="170" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="middle">热流即引</text>
+<text x="1000" y="194" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="middle">创作即闪耀。</text>
+<rect x="900" y="214" width="200" height="40" rx="8" fill="#6252E8" stroke="none" stroke-width="0"/>
+<text x="1000.0" y="238.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">开始创作</text>
+<text x="836" y="286" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#1C1917" text-anchor="start">区域标题</text>
+<rect x="836" y="304" width="328" height="140" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<rect x="836" y="456" width="158" height="140" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<rect x="1006" y="456" width="158" height="140" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="28" y="760" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">首页主按钮保持 44px 紫色，不收成列表的 32px，也不改成黑胶囊。窄屏区块上下排，卡片先一列再两列。</text>
+</svg>

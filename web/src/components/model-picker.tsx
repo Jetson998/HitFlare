@@ -72,11 +72,12 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
             </SelectTrigger>
             <SelectContent
                 data-canvas-no-zoom
-                className={dot ? "z-[1200] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-24px)] rounded-2xl border border-[#E6E8EE] bg-popover p-1 shadow-[0_12px_40px_rgba(15,23,42,.1)] dark:border-stone-700" : "z-[1200] w-80 max-w-[calc(100vw-24px)] rounded-xl border border-border/70 bg-popover p-1 shadow-xl"}
+                className={dot ? "z-[2600] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-24px)] rounded-2xl border border-[#E6E8EE] bg-popover p-1 shadow-[0_12px_40px_rgba(15,23,42,.1)] dark:border-stone-700" : "z-[2600] w-80 max-w-[calc(100vw-24px)] rounded-xl border border-border/70 bg-popover p-1 shadow-xl"}
                 position="popper"
                 align="start"
                 side={side}
                 sideOffset={dot ? 8 : 6}
+                collisionPadding={12}
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.stopPropagation()}
             >

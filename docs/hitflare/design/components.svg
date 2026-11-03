@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="980" viewBox="0 0 1280 980">
+<rect x="0" y="0" width="1280" height="980" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">组件状态</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">没有选中态的控件不要补。按下不位移。禁用是原色 40% 透明度。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<text x="250" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">默认</text>
+<text x="390" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">悬停</text>
+<text x="530" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">按下</text>
+<text x="670" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">焦点</text>
+<text x="810" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">禁用</text>
+<text x="950" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">加载</text>
+<text x="1090" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#78716C" text-anchor="start">选中</text>
+<text x="28" y="156" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">列表主按钮</text>
+<g opacity="1">
+<rect x="230" y="128" width="100" height="40" rx="8" fill="#6252E8" stroke="none" stroke-width="1"/>
+<text x="280" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">主操作</text>
+</g>
+<text x="280" y="184" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="10" font-weight="400" fill="#78716C" text-anchor="middle">#6252E8</text>
+<g opacity="1">
+<rect x="370" y="128" width="100" height="40" rx="8" fill="#5141D5" stroke="none" stroke-width="1"/>
+<text x="420" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">主操作</text>
+</g>
+<text x="420" y="184" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="10" font-weight="400" fill="#78716C" text-anchor="middle">#5141D5</text>
+<g opacity="1">
+<rect x="510" y="128" width="100" height="40" rx="8" fill="#5041CC" stroke="none" stroke-width="1"/>
+<text x="560" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">主操作</text>
+</g>
+<text x="560" y="184" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="10" font-weight="400" fill="#78716C" text-anchor="middle">#5041CC</text>
+<g opacity="1">
+<rect x="647" y="125" width="106" height="46" rx="10" fill="none" stroke="#6252E8" stroke-width="2"/>
+<rect x="650" y="128" width="100" height="40" rx="8" fill="#6252E8" stroke="none" stroke-width="1"/>
+<text x="700" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">主操作</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="128" width="100" height="40" rx="8" fill="#6252E8" stroke="none" stroke-width="1"/>
+<text x="840" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">主操作</text>
+</g>
+<g opacity="1">
+<rect x="930" y="128" width="100" height="40" rx="8" fill="#6252E8" stroke="none" stroke-width="1"/>
+<text x="980" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="128" width="100" height="40" rx="8" fill="#F7F6F3" stroke="none" stroke-width="1"/>
+<text x="1120" y="153" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#A8A29E" text-anchor="middle">无</text>
+</g>
+<text x="28" y="264" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">工作台主按钮</text>
+<g opacity="1">
+<rect x="230" y="236" width="100" height="40" rx="20" fill="#111827" stroke="none" stroke-width="1"/>
+<text x="280" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+</g>
+<text x="280" y="292" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="10" font-weight="400" fill="#78716C" text-anchor="middle">#111827</text>
+<g opacity="1">
+<rect x="370" y="236" width="100" height="40" rx="20" fill="#000000" stroke="none" stroke-width="1"/>
+<text x="420" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+</g>
+<text x="420" y="292" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="10" font-weight="400" fill="#78716C" text-anchor="middle">#000000</text>
+<g opacity="1">
+<rect x="510" y="236" width="100" height="40" rx="20" fill="#000000" stroke="none" stroke-width="1"/>
+<text x="560" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+</g>
+<text x="560" y="292" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="10" font-weight="400" fill="#78716C" text-anchor="middle">#000000</text>
+<g opacity="1">
+<rect x="647" y="233" width="106" height="46" rx="22" fill="none" stroke="#111827" stroke-width="2"/>
+<rect x="650" y="236" width="100" height="40" rx="20" fill="#111827" stroke="none" stroke-width="1"/>
+<text x="700" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="236" width="100" height="40" rx="20" fill="#111827" stroke="none" stroke-width="1"/>
+<text x="840" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+</g>
+<g opacity="1">
+<rect x="930" y="236" width="100" height="40" rx="20" fill="#111827" stroke="none" stroke-width="1"/>
+<text x="980" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="236" width="100" height="40" rx="20" fill="#F7F6F3" stroke="none" stroke-width="1"/>
+<text x="1120" y="261" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#A8A29E" text-anchor="middle">无</text>
+</g>
+<text x="28" y="372" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">白圆按钮</text>
+<g opacity="1">
+<rect x="230" y="344" width="100" height="40" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="280" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="middle">○</text>
+</g>
+<g opacity="1">
+<rect x="370" y="344" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="420" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="middle">○</text>
+</g>
+<g opacity="1">
+<rect x="510" y="344" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="560" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="middle">○</text>
+</g>
+<g opacity="1">
+<rect x="647" y="341" width="106" height="46" rx="18" fill="none" stroke="#111827" stroke-width="2"/>
+<rect x="650" y="344" width="100" height="40" rx="16" fill="#FFFFFF" stroke="#111827" stroke-width="1"/>
+<text x="700" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="middle">○</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="344" width="100" height="40" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="840" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="middle">○</text>
+</g>
+<g opacity="1">
+<rect x="930" y="344" width="100" height="40" rx="16" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="980" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="344" width="100" height="40" rx="16" fill="#F7F6F3" stroke="none" stroke-width="1"/>
+<text x="1120" y="369" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#A8A29E" text-anchor="middle">无</text>
+</g>
+<text x="28" y="480" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">列表输入</text>
+<g opacity="1">
+<rect x="230" y="452" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="280" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="370" y="452" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="420" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="510" y="452" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="560" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="647" y="449" width="106" height="46" rx="10" fill="none" stroke="#6252E8" stroke-width="2"/>
+<rect x="650" y="452" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#6252E8" stroke-width="1"/>
+<text x="700" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">输入</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="452" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="840" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="930" y="452" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="980" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="452" width="100" height="40" rx="8" fill="#F7F6F3" stroke="none" stroke-width="1"/>
+<text x="1120" y="477" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#A8A29E" text-anchor="middle">无</text>
+</g>
+<text x="28" y="588" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">工作台输入</text>
+<g opacity="1">
+<rect x="230" y="560" width="100" height="40" rx="18" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="280" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="370" y="560" width="100" height="40" rx="18" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="420" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="510" y="560" width="100" height="40" rx="18" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="560" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="647" y="557" width="106" height="46" rx="20" fill="none" stroke="#111827" stroke-width="2"/>
+<rect x="650" y="560" width="100" height="40" rx="18" fill="#FFFFFF" stroke="#111827" stroke-width="1"/>
+<text x="700" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">输入</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="560" width="100" height="40" rx="18" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="840" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">输入</text>
+</g>
+<g opacity="1">
+<rect x="930" y="560" width="100" height="40" rx="18" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="980" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="560" width="100" height="40" rx="18" fill="#F7F6F3" stroke="none" stroke-width="1"/>
+<text x="1120" y="585" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#A8A29E" text-anchor="middle">无</text>
+</g>
+<text x="28" y="696" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">列表分段</text>
+<g opacity="1">
+<rect x="230" y="668" width="100" height="40" rx="8" fill="#F8F9FB" stroke="none" stroke-width="1"/>
+<text x="280" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">全部</text>
+</g>
+<g opacity="1">
+<rect x="370" y="668" width="100" height="40" rx="8" fill="#F8F9FB" stroke="none" stroke-width="1"/>
+<text x="420" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">全部</text>
+</g>
+<g opacity="1">
+<rect x="510" y="668" width="100" height="40" rx="8" fill="#F8F9FB" stroke="none" stroke-width="1"/>
+<text x="560" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">全部</text>
+</g>
+<g opacity="1">
+<rect x="647" y="665" width="106" height="46" rx="10" fill="none" stroke="#6252E8" stroke-width="2"/>
+<rect x="650" y="668" width="100" height="40" rx="8" fill="#F8F9FB" stroke="none" stroke-width="1"/>
+<text x="700" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">全部</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="668" width="100" height="40" rx="8" fill="#F8F9FB" stroke="none" stroke-width="1"/>
+<text x="840" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">全部</text>
+</g>
+<g opacity="1">
+<rect x="930" y="668" width="100" height="40" rx="8" fill="#F8F9FB" stroke="none" stroke-width="1"/>
+<text x="980" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="668" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#E4E6EC" stroke-width="1"/>
+<text x="1120" y="693" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#171717" text-anchor="middle">全部</text>
+</g>
+<text x="28" y="804" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#1C1917" text-anchor="start">工作台胶囊</text>
+<g opacity="1">
+<rect x="230" y="776" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="280" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">1:1</text>
+</g>
+<g opacity="1">
+<rect x="370" y="776" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="420" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">1:1</text>
+</g>
+<g opacity="1">
+<rect x="510" y="776" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="560" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">1:1</text>
+</g>
+<g opacity="1">
+<rect x="647" y="773" width="106" height="46" rx="18" fill="none" stroke="#111827" stroke-width="2"/>
+<rect x="650" y="776" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="700" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">1:1</text>
+</g>
+<g opacity="0.4">
+<rect x="790" y="776" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="840" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">1:1</text>
+</g>
+<g opacity="1">
+<rect x="930" y="776" width="100" height="40" rx="16" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="980" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">…</text>
+</g>
+<g opacity="1">
+<rect x="1070" y="776" width="100" height="40" rx="16" fill="#111827" stroke="none" stroke-width="1"/>
+<text x="1120" y="801" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">1:1</text>
+</g>
+<text x="28" y="900" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">焦点环 2px，向外偏 2px。列表用紫色，工作台用近黑，深色工作台用白。不要用淡紫色阴影当焦点。</text>
+<text x="28" y="922" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">工作台深色主按钮是白底黑字，悬停 #F5F5F4。白圆按钮的收藏只换图标，不另做选中形。</text>
+<text x="28" y="944" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">弹层菜单沿用 Ant Design 底色。不在单个菜单上另配颜色。</text>
+</svg>

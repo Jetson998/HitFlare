@@ -39,13 +39,19 @@ export function managementRoutes(management,auth,workspace,generations) {
         if(match && req.method === "PUT") return json(res,200,{source:sourceDto(management.saveSource({...await read(sourceSchema),id:match[1]},context))});
         if(match && req.method === "DELETE") {management.removeSource(match[1],context);return json(res,200,{success:true});}
         if(path === "/api/admin/logs" && req.method === "GET") {
+            const names=Object.fromEntries(auth.users().map(row=>[row.id,row.username]));
             const filter=(row,key,query=key)=>!url.searchParams.get(query)||String(row[key] ?? "")===url.searchParams.get(query);
             const from=url.searchParams.get("from"),to=url.searchParams.get("to");
             const within=row=>(!from || row.createdAt>=from)&&(!to || row.createdAt<to);
+            const username=url.searchParams.get("username");
+            const named=(id)=>id?names[id] || null:null;
+            const matchesUser=(ids)=>!username||ids.some(id=>named(id)===username);
             const requestLogs=adminCallLogs(generations,workspace,url.searchParams);
-            const audit=[...auth.audits(),...management.audits()].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).filter(row=>within(row)&&filter(row,"actorUserId")&&filter(row,"targetId")&&filter(row,"action")&&filter(row,"result")&&filter(row,"requestId")&&filter(row,"errorCode")&&(!url.searchParams.get("userId")||[row.actorUserId,row.targetId].includes(url.searchParams.get("userId"))));
-            const errors=management.errors().filter(row=>within(row)&&filter(row,"ownerUserId","userId")&&filter(row,"requestId")&&filter(row,"method")&&filter(row,"route")&&filter(row,"appHttpStatus")&&filter(row,"appErrorCode"));
-            return json(res,200,{...requestLogs,audit,errors});
+            requestLogs.calls=requestLogs.calls.map(row=>({...row,username:named(row.ownerUserId)})).filter(row=>matchesUser([row.ownerUserId]));
+            requestLogs.operations=requestLogs.operations.map(row=>({...row,username:named(row.ownerUserId)})).filter(row=>matchesUser([row.ownerUserId]));
+            const audit=[...auth.audits(),...management.audits()].map(row=>({...row,actorUsername:named(row.actorUserId),targetUsername:named(row.targetId)})).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).filter(row=>within(row)&&matchesUser([row.actorUserId,row.targetId])&&filter(row,"actorUserId")&&filter(row,"targetId")&&filter(row,"action")&&filter(row,"result")&&filter(row,"requestId")&&filter(row,"errorCode")&&(!url.searchParams.get("userId")||[row.actorUserId,row.targetId].includes(url.searchParams.get("userId"))));
+            const errors=management.errors().map(row=>({...row,username:named(row.ownerUserId)})).filter(row=>within(row)&&matchesUser([row.ownerUserId])&&filter(row,"ownerUserId","userId")&&filter(row,"requestId")&&filter(row,"method")&&filter(row,"route")&&filter(row,"appHttpStatus")&&filter(row,"appErrorCode"));
+            const models=[...new Set(workspace.allChannels().flatMap(channel=>(channel.models || []).map(model=>model.name)))].sort();return json(res,200,{...requestLogs,audit,errors,options:{models}});
         }
         if(path === "/api/admin/storage-diagnostics" && req.method === "GET") {const result=await workspace.assetDiagnostics();active();return json(res,200,result);}
         throw new InputError("接口不存在",404);

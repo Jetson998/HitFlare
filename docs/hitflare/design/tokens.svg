@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760">
+<rect x="0" y="0" width="1280" height="760" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">基础样式</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">两套外观，浅色和深色。宽屏窄屏共用，不另写字号。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<text x="28" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="start">列表、后台</text>
+<text x="28" y="128" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#78716C" text-anchor="start">浅色</text>
+<text x="328" y="128" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#78716C" text-anchor="start">深色</text>
+<rect x="28" y="144" width="270" height="50" rx="8" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="174" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">页面底</text>
+<rect x="28" y="206" width="270" height="50" rx="8" fill="#F8F9FB" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="236" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">次级底</text>
+<rect x="28" y="268" width="270" height="50" rx="8" fill="#171717" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="298" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">正文</text>
+<rect x="28" y="330" width="270" height="50" rx="8" fill="#5B6475" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="360" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">说明</text>
+<rect x="28" y="392" width="270" height="50" rx="8" fill="#E4E6EC" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="422" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">边框</text>
+<rect x="28" y="454" width="270" height="50" rx="8" fill="#6252E8" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="484" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">主按钮</text>
+<rect x="28" y="516" width="270" height="50" rx="8" fill="#5141D5" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="546" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">悬停</text>
+<rect x="28" y="578" width="270" height="50" rx="8" fill="#5041CC" stroke="#D6D3D1" stroke-width="1"/>
+<text x="42" y="608" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">按下</text>
+<rect x="328" y="144" width="270" height="50" rx="8" fill="#1C1917" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="174" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FAFAFA" text-anchor="start">页面底</text>
+<rect x="328" y="206" width="270" height="50" rx="8" fill="#242220" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="236" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FAFAFA" text-anchor="start">次级底</text>
+<rect x="328" y="268" width="270" height="50" rx="8" fill="#FAFAFA" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="298" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">正文</text>
+<rect x="328" y="330" width="270" height="50" rx="8" fill="#B5B8C0" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="360" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">说明</text>
+<rect x="328" y="392" width="270" height="50" rx="8" fill="#363331" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="422" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FAFAFA" text-anchor="start">边框</text>
+<rect x="328" y="454" width="270" height="50" rx="8" fill="#AA9CFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="484" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">主按钮</text>
+<rect x="328" y="516" width="270" height="50" rx="8" fill="#BCB1FF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="546" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">悬停</text>
+<rect x="328" y="578" width="270" height="50" rx="8" fill="#9787ED" stroke="#D6D3D1" stroke-width="1"/>
+<text x="342" y="608" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#171717" text-anchor="start">按下</text>
+<text x="660" y="104" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#1C1917" text-anchor="start">工作台、Agent、配置</text>
+<text x="660" y="128" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#78716C" text-anchor="start">浅色</text>
+<text x="960" y="128" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#78716C" text-anchor="start">深色</text>
+<rect x="660" y="144" width="270" height="50" rx="8" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="174" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">页面底</text>
+<rect x="660" y="206" width="270" height="50" rx="8" fill="#F3F4F6" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="236" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">未选中</text>
+<rect x="660" y="268" width="270" height="50" rx="8" fill="#111827" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="298" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">正文</text>
+<rect x="660" y="330" width="270" height="50" rx="8" fill="#6B7280" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="360" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">次级</text>
+<rect x="660" y="392" width="270" height="50" rx="8" fill="#E6E8EE" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="422" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">边框</text>
+<rect x="660" y="454" width="270" height="50" rx="8" fill="#111827" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="484" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">主按钮</text>
+<rect x="660" y="516" width="270" height="50" rx="8" fill="#000000" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="546" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="start">悬停</text>
+<rect x="660" y="578" width="270" height="50" rx="8" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="674" y="608" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#6B7280" text-anchor="start">白圆</text>
+<rect x="960" y="144" width="270" height="50" rx="8" fill="#0C0A09" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="174" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#F5F5F4" text-anchor="start">页面底</text>
+<rect x="960" y="206" width="270" height="50" rx="8" fill="#292524" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="236" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#F5F5F4" text-anchor="start">未选中</text>
+<rect x="960" y="268" width="270" height="50" rx="8" fill="#F5F5F4" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="298" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">正文</text>
+<rect x="960" y="330" width="270" height="50" rx="8" fill="#A8A29E" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="360" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">次级</text>
+<rect x="960" y="392" width="270" height="50" rx="8" fill="#44403C" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="422" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#F5F5F4" text-anchor="start">边框</text>
+<rect x="960" y="454" width="270" height="50" rx="8" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="484" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">主按钮</text>
+<rect x="960" y="516" width="270" height="50" rx="8" fill="#F5F5F4" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="546" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="start">悬停</text>
+<rect x="960" y="578" width="270" height="50" rx="8" fill="#1C1917" stroke="#D6D3D1" stroke-width="1"/>
+<text x="974" y="608" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#F5F5F4" text-anchor="start">抬起底</text>
+<text x="28" y="700" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">紫色只给列表主按钮。工作台和配置不用紫。首页 44px 紫按钮、登录橙色按钮是品牌例外，不扩散。</text>
+<text x="28" y="722" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">页边距最小 24px。字号不随窄屏改档，首页品牌标题除外：宽屏 48/60，窄屏 32/42。</text>
+</svg>

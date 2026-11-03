@@ -33,6 +33,14 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         } else if(!open) setDraft(null);
     }, [open, channel]);
 
+    const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+    useEffect(() => {
+        const query = window.matchMedia("(max-width: 767px)");
+        const update = () => setNarrow(query.matches);
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, []);
     if (!draft) return null;
 
     const patch = (value: Partial<ModelChannel>) => setDraft((current) => (current ? { ...current, ...value } : current));
@@ -90,21 +98,16 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         catch(error) {message.error(error instanceof Error ? error.message : "渠道保存失败");}
     };
 
+    const actions = <Space><Button onClick={onClose}>{t("common.cancel")}</Button><Button type="primary" loading={autoFetching} onClick={save}>{t("common.save")}</Button></Space>;
     return (
         <Drawer
             open={open}
-            width={640}
+            width={narrow ? "100vw" : 640}
             title={t("config.channelEditor.title")}
             onClose={onClose}
             styles={{ body: { paddingTop: 16 } }}
-            extra={
-                <Space>
-                    <Button onClick={onClose}>{t("common.cancel")}</Button>
-                    <Button type="primary" loading={autoFetching} onClick={save}>
-                        {t("common.save")}
-                    </Button>
-                </Space>
-            }
+            extra={narrow ? null : actions}
+            footer={narrow ? <div className="flex justify-end">{actions}</div> : null}
         >
             <div className="grid gap-4 md:grid-cols-2">
                 <label className="block">

@@ -185,7 +185,7 @@ export function CanvasConfigComposer({ nodeId, nodes, value, inputs, connectedNo
                 />
                 {mention && candidates.length ? <MentionMenu inputs={candidates} allInputs={inputs} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertReference} /> : null}
             </div>
-            {imagePreview ? <ImageLightbox images={[{ id: imagePreview, src: imagePreview, alt: t("canvas.composer.imagePreview"), filename: "image.png" }]} index={0} onIndex={() => {}} onClose={() => setImagePreview(null)} /> : null}
+            {imagePreview ? <ImageLightbox variant="light" images={[{ id: imagePreview, src: imagePreview, alt: t("canvas.composer.imagePreview"), filename: "image.png" }]} index={0} onIndex={() => {}} onClose={() => setImagePreview(null)} /> : null}
         </div>
     );
 

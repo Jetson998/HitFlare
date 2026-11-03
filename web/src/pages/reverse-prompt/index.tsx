@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { App, Drawer, Popover } from "antd";
-import { ChevronDown, ChevronUp, Copy, History, ImagePlus, LoaderCircle, ScanSearch, Settings2, Sparkles, Square, Trash2 } from "lucide-react";
+import { App } from "antd";
+import { ChevronDown, ChevronLeft, ChevronUp, Copy, ImagePlus, LoaderCircle, ScanSearch, Settings2, Sparkles, Square, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { GenerationHistoryPanel } from "@/components/generation-history-panel";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { ModelPicker } from "@/components/model-picker";
+import { SettingsDialog } from "@/components/settings-dialog";
 import { WorkbenchActionBar } from "@/components/workbench-action-bar";
 import { createVisualImageSource, type VisualStage } from "@/services/api/visual-analysis";
 import { useCopyText } from "@/hooks/use-copy-text";
@@ -89,37 +90,20 @@ function StatusPill({ tone = "neutral", children }: { tone?: "neutral" | "observ
 
 function TextModelSettings({ config, value, disabled, placeholder, onChange, onMissingConfig }: { config: AiConfig; value: string; disabled?: boolean; placeholder: string; onChange: (value: string) => void; onMissingConfig: () => void }) {
     const [open, setOpen] = useState(false);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const [span, setSpan] = useState({ width: 380, offset: 0 });
-    const measure = () => {
-        const trigger = triggerRef.current;
-        if (!trigger) return;
-        const column = trigger.closest("[data-settings-column]") as HTMLElement | null;
-        const triggerRect = trigger.getBoundingClientRect();
-        const columnRect = column?.getBoundingClientRect();
-        if (!columnRect) { setSpan({ width: Math.round(triggerRect.width), offset: 0 }); return; }
-        setSpan({ width: Math.round(columnRect.width), offset: Math.round(columnRect.left - triggerRect.left) });
-    };
-    useEffect(() => {
-        if (!open) return;
-        measure();
-        window.addEventListener("resize", measure);
-        return () => window.removeEventListener("resize", measure);
-    }, [open]);
     const name = modelOptionName(value) || placeholder;
-    return <Popover open={open} onOpenChange={next => { if (disabled) return; if (next) measure(); setOpen(next); }} trigger="click" placement="topLeft" arrow={false} align={{ offset: [span.offset, 8] }} classNames={{ root: "generation-settings-popover" }} styles={{ container: { width: span.width, maxWidth: "calc(100vw - 16px)", padding: 0, borderRadius: 20, boxShadow: "0 12px 40px rgba(15,23,42,.1)", overflow: "hidden" } }} content={<div className="grok-scrollbar max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4">
-        <div className="text-[15px] font-medium leading-6 text-[#111827] dark:text-stone-100">分析模型</div>
-        <div className="space-y-2">
-            <div className="text-[13px] font-medium leading-5 text-[#6B7280]">模型</div>
-            <ModelPicker className="!h-9 !rounded-full !border-[#E6E8EE] !bg-white !px-3 !text-[13px] !shadow-none dark:!border-stone-700 dark:!bg-stone-950" config={config} value={value} capability="text" fullWidth onChange={onChange} onMissingConfig={onMissingConfig} disabled={disabled} />
-        </div>
-    </div>}>
-        <button ref={triggerRef} type="button" className="flex h-10 w-full items-center gap-2 rounded-full border border-[#E6E8EE] bg-white px-3 text-[13px] leading-5 text-[#111827] hover:bg-[#F7F8FA] disabled:opacity-40 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-white/10" disabled={disabled} aria-label={`分析模型：${name}`} title={name} aria-expanded={open}>
+    return <>
+        <button type="button" className="flex h-10 w-full items-center gap-2 rounded-full border border-[#E6E8EE] bg-white px-3 text-[13px] leading-5 text-[#111827] hover:bg-[#F7F8FA] disabled:opacity-40 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-white/10" disabled={disabled} aria-label={`分析模型：${name}`} title={name} aria-expanded={open} onClick={() => setOpen(true)}>
             <span className="size-3.5 shrink-0 rounded-full bg-[conic-gradient(#F97316,#7C3AED,#22C55E,#F97316)]" />
             <span className="min-w-0 flex-1 truncate text-left">{name}</span>
             <ChevronUp className="size-3.5 shrink-0 text-[#6B7280]" />
         </button>
-    </Popover>;
+        <SettingsDialog open={open} title="分析模型" onClose={() => setOpen(false)}>
+            <div className="space-y-2">
+                <div className="text-[13px] font-medium leading-5 text-[#6B7280]">模型</div>
+                <ModelPicker className="!h-9 !rounded-full !border-[#E6E8EE] !bg-white !px-3 !text-[13px] !shadow-none dark:!border-stone-700 dark:!bg-stone-950" config={config} value={value} capability="text" fullWidth onChange={onChange} onMissingConfig={onMissingConfig} disabled={disabled} />
+            </div>
+        </SettingsDialog>
+    </>;
 }
 
 function RefineMarquee({ text }: { text: string }) {
@@ -150,12 +134,12 @@ export default function ReversePromptPage() {
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const reverseState = useReversePromptStore();
-    const { draft, history, model, currentResult, selectedHistoryId, activeTaskId, activeTask, storageError, connectionIssue, submitting, pendingRequestId, nextCursor, loadingMore, openingHistoryId, error: storeError } = reverseState;
-    const { initialize, setModel, setDraft, clearDraft, selectHistory, run, stop, loadMore } = reverseState;
+    const { draft, history, model, currentResult, selectedHistoryId, activeTaskId, activeTask, storageError, connectionIssue, submitting, pendingRequestId, openingHistoryId, error: storeError } = reverseState;
+    const { initialize, setModel, setDraft, clearDraft, selectHistory, run, stop } = reverseState;
     const [previewUrl, setPreviewUrl] = useState("");
     const [uploading, setUploading] = useState(false);
     const [assetPickerOpen,setAssetPickerOpen]=useState(false);
-    const [logsOpen, setLogsOpen] = useState(false);
+    const [historyScreen, setHistoryScreen] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [referenceMenu, setReferenceMenu] = useState<{ x: number; y: number } | null>(null);
     const [referencePreview, setReferencePreview] = useState(false);
@@ -592,28 +576,30 @@ export default function ReversePromptPage() {
         window.setTimeout(() => pasteCatcherRef.current?.focus(), 0);
         message.info({ key: "reverse-clipboard", content: t("reversePrompt.clipboardPaste", { shortcut: pasteShortcut }) });
     };
-    const historyPanel = () => (
+    const historyPanel = (closeScreen = false) => (
         <GenerationHistoryPanel
             variant="rail"
             groupByDay
             logs={historyWithElapsed}
             activeLogId={selectedHistoryId}
             newLabel="新建反推"
-            onNew={() => { setLogsOpen(false); startFresh(); }}
-            onSelectLog={(log) => { setLogsOpen(false); setReferenceOpen(false); void selectHistory(log.id); }}
-            headerAction={nextCursor ? <button type="button" className="mx-4 mb-4 h-8 text-left text-[13px] leading-5 text-[#6B7280] hover:text-[#111827] disabled:opacity-40" disabled={loadingMore} onClick={() => void loadMore()}>{t("reversePrompt.loadMoreTasks")}</button> : null}
+            leading={closeScreen ? <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-800 dark:text-stone-100" aria-label="返回创作" onClick={() => setHistoryScreen(false)}><ChevronLeft className="size-5" /></button> : undefined}
+            onNew={() => { setHistoryScreen(false); startFresh(); }}
+            onSelectLog={(log) => { setHistoryScreen(false); setReferenceOpen(false); void selectHistory(log.id); }}
         />
     );
 
     return (
-        <div className="@container/workbench flex h-full min-h-0 overflow-hidden bg-white text-[#111827] dark:bg-stone-950 dark:text-stone-100">
+        <div className="@container/workbench relative flex h-full min-h-0 overflow-hidden bg-white text-[#111827] dark:bg-stone-950 dark:text-stone-100">
             <aside className="hidden w-[300px] shrink-0 @min-[1100px]/workbench:block @min-[1440px]/workbench:w-[320px]">
                 {historyPanel()}
             </aside>
+            {historyScreen ? <div className="absolute inset-0 z-20 min-h-0 bg-[#F9FAFB] @min-[1100px]/workbench:hidden dark:bg-stone-900">{historyPanel(true)}</div> : null}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex shrink-0 items-center px-6 pt-4 @min-[960px]/app:px-4 @min-[1100px]/workbench:hidden"><button type="button" className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-900 dark:text-stone-100" aria-label="生成记录" onClick={() => setHistoryScreen(true)}><ChevronLeft className="size-5" /></button></div>
                 <main className={cn("grok-scrollbar grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @min-[1100px]/workbench:overflow-hidden", !referenceCollapsed && "@min-[1100px]/workbench:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]")}>
                     <section className="contents">
-                        {referenceCollapsed ? null : <div data-settings-column className="grok-scrollbar flex min-w-0 flex-col border-b border-[#F3F4F6] p-5 dark:border-stone-800 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto @min-[1100px]/workbench:border-b-0 @min-[1100px]/workbench:border-r">
+                        {referenceCollapsed ? null : <div data-settings-column className="grok-scrollbar flex min-w-0 flex-col border-b border-[#F3F4F6] px-6 py-5 dark:border-stone-800 @min-[960px]/app:px-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto @min-[1100px]/workbench:border-b-0 @min-[1100px]/workbench:border-r">
                             <div className="space-y-5">
                                 <div>
                                     <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -621,7 +607,6 @@ export default function ReversePromptPage() {
                                         <div className="flex flex-wrap items-center justify-end gap-1">
                                             {currentResult && referenceOpen ? <button type="button" className="h-8 px-2 text-[13px] leading-5 text-[#6B7280] hover:text-[#111827]" onClick={() => setReferenceOpen(false)}>收起</button> : null}
                                             {streaming ? <GrokIconAction label={t("reversePrompt.stop")} onClick={() => void stop()}><Square className="size-3.5 fill-current" /></GrokIconAction> : null}
-                                            <button type="button" className={`${grokIconButton} @min-[1100px]/workbench:hidden`} aria-label={t("workbench.logs")} title={t("workbench.logs")} onClick={() => setLogsOpen(true)}><History className="size-4" /></button>
                                         </div>
                                     </div>
                                     <div
@@ -737,11 +722,8 @@ export default function ReversePromptPage() {
                                 }}
                             />
                         </div>}
-                        <div className={cn("grok-scrollbar relative min-w-0 px-5 pb-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto", referenceCollapsed ? "pt-4" : "pt-5")}>
+                        <div className={cn("grok-scrollbar relative min-w-0 px-6 pb-5 @min-[960px]/app:px-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto", referenceCollapsed ? "pt-4" : "pt-5")}>
                             {openingHistoryId ? <div className="absolute inset-0 z-10 grid place-items-center bg-white/75 text-sm text-[#6B7280] dark:bg-stone-950/75" role="status">加载中</div> : null}
-                            {referenceCollapsed ? <div className="mb-5 flex items-center gap-1 @min-[1100px]/workbench:hidden">
-                                <button type="button" className={grokIconButton} aria-label={t("workbench.logs")} title={t("workbench.logs")} onClick={() => setLogsOpen(true)}><History className="size-4" /></button>
-                            </div> : null}
                             {connectionIssue ? <div role="status" className="mb-3 rounded-2xl border border-[#E6E8EE] px-3 py-2 text-[13px] leading-5 text-[#6B7280] dark:border-stone-800">{t(`reversePrompt.connection.${connectionIssue}`)}</div> : null}
                             {currentResult ? renderResult(currentResult) : (
                                 <div className="flex min-h-[320px] flex-col items-center justify-center text-center @min-[1100px]/workbench:min-h-[420px]">
@@ -753,9 +735,6 @@ export default function ReversePromptPage() {
                     </section>
                 </main>
             </div>
-            <Drawer title={null} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)} styles={{ body: { padding: 0, height: "70vh" } }}>
-                {historyPanel()}
-            </Drawer>
             {referencePreview && previewUrl ? <ImageLightbox variant="light" images={[{ id: "reverse-reference", src: previewUrl, alt: previewName || t("reversePrompt.inputTitle"), filename: previewName || "reference.png" }]} index={0} onIndex={() => {}} onClose={() => setReferencePreview(false)} /> : null}
                         <AssetPickerModal open={assetPickerOpen} onClose={()=>setAssetPickerOpen(false)} onInsert={async asset=>{
                 if(asset.kind!=="image") {message.warning("请选择图片资产");return;}

@@ -148,7 +148,7 @@
 
 .workspace-gutter,
 .workspace-page {
-    padding-inline: clamp(16px, 2cqi, 48px);
+    padding-inline: clamp(24px, 2cqi, 48px);
 }
 
 .workspace-page {
@@ -240,6 +240,7 @@
     pointer-events: none;
 }
 
+.narrow-page-only { display: none; }
 .workspace-search-row {
     display: flex;
     justify-content: flex-end;
@@ -320,6 +321,9 @@
 }
 
 @container page (max-width: 767px) {
+    .narrow-page-hide { display: none; }
+    .narrow-page-only { display: flex; flex-direction: column; gap: 1.25rem; }
+    .wide-page-only { display: none; }
     .workspace-search.ant-input-affix-wrapper { width: 100%; }
     .workspace-filter-bar { align-items: stretch; }
     .prompts-filter-bar { display: flex; flex-direction: column; }

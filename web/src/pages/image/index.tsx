@@ -1,6 +1,6 @@
-import { Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronLeft, Download, FolderPlus, ImagePlus, LoaderCircle, PenLine, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode, type Ref } from "react";
-import { App, Button, Drawer, Image, Input, Modal, Tag, Typography } from "antd";
+import { App, Button, Image, Input, Modal, Tag, Typography } from "antd";
 import {reportGeneration,createGeneration,listGenerationSummaries,readGeneration,generationCallError,deleteGeneration,cancelGeneration,dispatchServerImage,waitServerImage,bindGenerationOutput,recordGenerationOperation,assertGenerationSession,type GenerationSummary,type GenerationTask,type GenerationCall,type GenerationContext,type OutputTracking} from "@/services/api/generations";
 import {sessionIdentity} from "@/services/api/workspace";
 import { saveAs } from "file-saver";
@@ -109,7 +109,7 @@ export default function ImagePage() {
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
     const [detached, setDetached] = useState(false);
-    const [logsOpen, setLogsOpen] = useState(false);
+    const [historyScreen, setHistoryScreen] = useState(false);
     const [assetPickerOpen,setAssetPickerOpen]=useState(false);
     const [startedAt, setStartedAt] = useState(0);
     const [elapsedMs, setElapsedMs] = useState(0);
@@ -446,7 +446,7 @@ export default function ImagePage() {
     };
     const showHistoryLog = (log: GenerationLog) => {
         setActiveWorkbenchTab("generate");
-        setLogsOpen(false);
+        setHistoryScreen(false);
         setPreviewLog(log);
         setPrompt(log.prompt);
         setReferences(log.references || []);
@@ -483,7 +483,7 @@ export default function ImagePage() {
             setRunning(true);
             setStartedAt(flight.startedAt);
             setActiveWorkbenchTab("generate");
-            setLogsOpen(false);
+            setHistoryScreen(false);
             setPreviewLog(imageTaskLog(log.task));
             setPrompt(log.task.prompt);
             setReferences(log.task.references || []);
@@ -507,7 +507,7 @@ export default function ImagePage() {
         lastSnapshotRef.current = { text: log.prompt, config: { ...effectiveConfig, ...log.config, model: log.model, count: "1" }, references: log.references || [], template: log.template };
         activeTaskRef.current=log.task || null;
         setPreviewLog(log);
-        setLogsOpen(false);
+        setHistoryScreen(false);
         setPrompt(log.prompt);
         setReferences(log.references || []);
         if (log.config.imageModel || log.model) updateConfig("imageModel", log.config.imageModel || log.model);
@@ -734,20 +734,26 @@ export default function ImagePage() {
     };
 
     return (
-        <div className="@container/workbench flex h-full min-h-0 overflow-hidden bg-white text-[#111827] dark:bg-stone-950 dark:text-stone-100">
+        <div className="@container/workbench relative flex h-full min-h-0 overflow-hidden bg-white text-[#111827] dark:bg-stone-950 dark:text-stone-100">
             <aside className="hidden w-[300px] shrink-0 @min-[1100px]/workbench:block @min-[1440px]/workbench:w-[320px]">
                 <GenerationHistoryPanel variant="rail" groupByDay logs={visibleLogs} activeLogId={previewLog?.id} onNew={startFresh} onSelectLog={(log) => void previewGenerationLog(log as GenerationLog)} />
             </aside>
+            {historyScreen ? <div className="absolute inset-0 z-20 min-h-0 bg-[#F9FAFB] @min-[1100px]/workbench:hidden dark:bg-stone-900">
+                <GenerationHistoryPanel variant="rail" groupByDay logs={visibleLogs} activeLogId={previewLog?.id} leading={<button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-800 dark:text-stone-100" aria-label="返回创作" onClick={() => setHistoryScreen(false)}><ChevronLeft className="size-5" /></button>} onNew={() => { setHistoryScreen(false); startFresh(); }} onSelectLog={(log) => { setHistoryScreen(false); void previewGenerationLog(log as GenerationLog); }} />
+            </div> : null}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-3 pt-4">
+            <header className="flex shrink-0 items-center justify-between gap-3 px-6 pb-3 pt-4 @min-[960px]/app:px-4">
+                <div className="flex min-w-0 items-center gap-2">
+                <button type="button" className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] @min-[1100px]/workbench:hidden dark:bg-stone-900 dark:text-stone-100" aria-label="生成记录" onClick={() => setHistoryScreen(true)}><ChevronLeft className="size-5" /></button>
                 <div className="flex h-9 items-center gap-0.5 rounded-full bg-[#F3F4F6] p-0.5 dark:bg-stone-900">
                     {[{ key: "generate", label: t("imageWorkbench.tabs.generate") }, { key: "templates", label: t("imageWorkbench.tabs.templates") }].map(tab => <button type="button" key={tab.key} className={`inline-flex h-8 items-center rounded-full px-2.5 text-[13px] leading-none ${activeWorkbenchTab === tab.key ? "bg-white font-medium text-[#111827] shadow-[0_1px_2px_rgba(16,24,40,.06)] dark:bg-stone-800 dark:text-stone-100" : "text-[#6B7280]"}`} onClick={() => setActiveWorkbenchTab(tab.key)}>{tab.label}</button>)}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">{screenBusy?<button type="button" className={headerTextButton} onClick={()=>void cancelCurrent()}>取消生成</button>:previewLog?<button type="button" className={headerTextButton} onClick={()=>void deleteCurrent()}>删除记录</button>:null}<button type="button" className={`${grokIconButton} @min-[1100px]/workbench:hidden`} aria-label={t("workbench.logs")} title={t("workbench.logs")} onClick={() => setLogsOpen(true)}><History className="size-4" /></button></div>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">{screenBusy?<button type="button" className={headerTextButton} onClick={()=>void cancelCurrent()}>取消生成</button>:previewLog?<button type="button" className={headerTextButton} onClick={()=>void deleteCurrent()}>删除记录</button>:null}</div>
             </header>
             <main className="grok-scrollbar grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @min-[1100px]/workbench:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] @min-[1100px]/workbench:overflow-hidden">
                 <section className="contents">
-                    <div data-testid="generation-settings" className="grok-scrollbar flex min-w-0 flex-col border-b border-[#F3F4F6] p-5 dark:border-stone-800 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto @min-[1100px]/workbench:border-b-0 @min-[1100px]/workbench:border-r">
+                    <div data-testid="generation-settings" className="grok-scrollbar flex min-w-0 flex-col border-b border-[#F3F4F6] px-6 py-5 dark:border-stone-800 @min-[960px]/app:px-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto @min-[1100px]/workbench:border-b-0 @min-[1100px]/workbench:border-r">
                         {activeWorkbenchTab === "templates" ? (
                             <SceneTemplatePanel
                                 templateId={selectedTemplateId}
@@ -802,7 +808,7 @@ export default function ImagePage() {
                             />
                         ) : null}
                     </div>
-                    <div data-testid="generation-results" className="@container/results grok-scrollbar relative flex min-w-0 flex-col p-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto">
+                    <div data-testid="generation-results" className="@container/results grok-scrollbar relative flex min-w-0 flex-col px-6 py-5 @min-[960px]/app:px-5 @min-[1100px]/workbench:min-h-0 @min-[1100px]/workbench:overflow-y-auto">
                         {historyOpening ? <div className="absolute inset-0 z-10 grid place-items-center bg-white/75 text-sm text-[#6B7280] dark:bg-stone-950/75" role="status">加载中</div> : null}
                         {results.length ? (
                             <div className={`grid w-full gap-4 ${results.length > 1 ? "shrink-0 grid-cols-1 items-start @min-[760px]/results:grid-cols-2" : "min-h-0 flex-1 grid-cols-1"}`}>
@@ -827,13 +833,10 @@ export default function ImagePage() {
             </main>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(event) => { void addReferences(event.target.files); event.target.value = ""; }} />
-            <AssetPickerModal open={assetPickerOpen} onClose={()=>setAssetPickerOpen(false)} onInsert={asset=>{
+            <AssetPickerModal imageOnly open={assetPickerOpen} onClose={()=>setAssetPickerOpen(false)} onInsert={asset=>{
                 if(asset.kind!=="image") {message.warning("请选择图片资产");return;}
                 setReferences(value=>[...value,{id:nanoid(),name:asset.title,type:"image/png",dataUrl:asset.dataUrl,storageKey:asset.storageKey}]);setAssetPickerOpen(false);
             }} />
-            <Drawer title={null} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)} styles={{ body: { padding: 0, height: "70vh" } }}>
-                <GenerationHistoryPanel variant="rail" groupByDay logs={visibleLogs} activeLogId={previewLog?.id} onNew={startFresh} onSelectLog={(log) => { setLogsOpen(false); void previewGenerationLog(log as GenerationLog); }} />
-            </Drawer>
             {referencePreview !== null && <ImageLightbox variant="light" images={references.map(item => ({ id: item.id, src: item.dataUrl || (item.storageKey ? `/api/workspace/media/${item.storageKey}/content` : ""), alt: item.name, filename: item.name || "reference.png" }))} index={referencePreview} onIndex={setReferencePreview} onClose={() => setReferencePreview(null)} />}
             {galleryIndex !== null && <ImageLightbox images={results.flatMap((result, index) => result.status === "success" && result.image ? [{ id: result.image.id, src: result.image.dataUrl, alt: t("imageWorkbench.resultAlt", { count: index + 1 }), filename: `image-${index + 1}.${(result.image.mimeType || "image/png").split("/")[1] || "png"}`, asset: { key: `image-result:${result.image.id}`, title: t("imageWorkbench.resultTitle", { count: index + 1 }), source: "图片创作", url: result.image.dataUrl, storageKey: result.image.storageKey, width: result.image.width, height: result.image.height, bytes: result.image.bytes, mimeType: result.image.mimeType || "image/png", metadata: result.image.generation } }] : [])} index={galleryIndex} onIndex={setGalleryIndex} onClose={() => setGalleryIndex(null)} />}
         </div>

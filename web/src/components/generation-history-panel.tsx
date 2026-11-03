@@ -23,7 +23,7 @@ export type GenerationHistoryItem = {
     status?: "generating" | "completed" | "stopped" | "failed" | "interrupted" | "success" | "pending";
 };
 
-export function GenerationHistoryPanel({ logs, activeLogId, onSelectLog, onNew, headerAction, variant = "card", newLabel = "新建生成", groupByDay = false }: { logs: GenerationHistoryItem[]; activeLogId?: string; onSelectLog: (log: GenerationHistoryItem) => void; onNew?: () => void; headerAction?: ReactNode; variant?: "card" | "rail"; newLabel?: string; groupByDay?: boolean }) {
+export function GenerationHistoryPanel({ logs, activeLogId, onSelectLog, onNew, headerAction, leading, variant = "card", newLabel = "新建生成", groupByDay = false }: { logs: GenerationHistoryItem[]; activeLogId?: string; onSelectLog: (log: GenerationHistoryItem) => void; onNew?: () => void; headerAction?: ReactNode; leading?: ReactNode; variant?: "card" | "rail"; newLabel?: string; groupByDay?: boolean }) {
     const { t } = useTranslation();
     const [query, setQuery] = useState("");
     const [searching, setSearching] = useState(false);
@@ -33,13 +33,14 @@ export function GenerationHistoryPanel({ logs, activeLogId, onSelectLog, onNew, 
         return (
             <div className="flex h-full min-h-0 w-full flex-col bg-[#F9FAFB] dark:bg-stone-900">
                 <style>{`@keyframes history-live-face{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1,1)}50%{transform:translate3d(0,-8px,0) rotate(-18deg) scale(1.22,.68)}}@keyframes history-live-eyes{0%,100%{transform:scale(1,1)}50%{transform:scale(.82,1.47)}}.history-live-face{width:20px;height:20px;transform-box:fill-box;transform-origin:10px 10px;animation:history-live-face .8s ease-in-out infinite}.history-live-eyes{transform-box:fill-box;transform-origin:center;animation:history-live-eyes .8s ease-in-out infinite}`}</style>
-                <div className="flex items-center gap-2 px-4 pb-3 pt-4">
+                <div className="flex items-center gap-2 px-6 pb-3 pt-4 @min-[960px]/app:px-4">
+                    {leading}
                     <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] hover:bg-[#F3F4F6] dark:bg-stone-800 dark:text-stone-200" aria-label="搜索记录" aria-pressed={searching} onClick={() => setSearching(value => !value)}><Search className="size-4" /></button>
                     {onNew ? <button type="button" className="grid size-9 place-items-center rounded-full bg-white text-[#6B7280] shadow-[0_1px_2px_rgba(16,24,40,.06)] hover:bg-[#F3F4F6] disabled:opacity-40 dark:bg-stone-800 dark:text-stone-200" aria-label={newLabel} onClick={onNew}><Plus className="size-4" /></button> : null}
                     <span className="ml-auto text-[12px] leading-4 text-[#6B7280]">{visible.length}</span>
                 </div>
-                {searching && <div className="px-4 pb-3"><input aria-label="搜索记录" autoFocus value={query} placeholder="搜索记录" className="h-9 w-full rounded-full border border-[#E6E8EE] bg-white px-3 text-[13px] outline-none dark:border-stone-700 dark:bg-stone-950" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { setSearching(false); setQuery(""); } }} /></div>}
-                <div className="grok-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+                {searching && <div className="px-6 pb-3 @min-[960px]/app:px-4"><input aria-label="搜索记录" autoFocus value={query} placeholder="搜索记录" className="h-9 w-full rounded-full border border-[#E6E8EE] bg-white px-3 text-[13px] outline-none dark:border-stone-700 dark:bg-stone-950" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { setSearching(false); setQuery(""); } }} /></div>}
+                <div className="grok-scrollbar min-h-0 flex-1 overflow-y-auto px-6 pb-4 @min-[960px]/app:px-3">
                     {groupByDay ? historyAgeGroups(visible).map((group) => <section key={group.label || "recent"} className="mt-4 first:mt-1">{group.label ? <div className="mb-2 flex items-center justify-end gap-3"><div className="h-px min-w-4 flex-1 bg-border" /><span className="shrink-0 text-[12px] leading-4 text-[#C5CAD3]">{group.label}</span></div> : null}<div className="space-y-1">{group.items.map(log => <HistoryRailItem key={log.id} log={log} active={activeLogId === log.id} onClick={() => onSelectLog(log)} />)}</div></section>) : <div className="space-y-1">{visible.map(log => <HistoryRailItem key={log.id} log={log} active={activeLogId === log.id} onClick={() => onSelectLog(log)} />)}</div>}
                     {!visible.length ? <p className="px-2 py-8 text-center text-[13px] text-[#6B7280]">{needle ? "没有匹配的记录" : t("workbench.noLogs")}</p> : null}
                 </div>

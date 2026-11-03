@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="980" viewBox="0 0 1280 980">
+<rect x="0" y="0" width="1280" height="980" rx="0" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="28" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="20" font-weight="650" fill="#1C1917" text-anchor="start">工作台</text>
+<text x="28" y="58" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#78716C" text-anchor="start">图片、视频、反推共用。记录不盖住顶栏。</text>
+<text x="1252" y="36" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="end">结构示意，红字不是界面文案</text>
+<rect x="28" y="96" width="760" height="500" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="28" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">宽屏 · ≥ 1100</text>
+<rect x="28" y="96" width="150" height="500" rx="16" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<line x1="178" y1="96" x2="178" y2="596" stroke="#E7E5E4" stroke-width="1"/>
+<text x="44" y="128" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#111827" text-anchor="start">历史</text>
+<rect x="44" y="144" width="28" height="28" rx="14" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="80" y="144" width="28" height="28" rx="14" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="44" y="188" width="118" height="52" rx="10" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="54" y="218" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="start">记录</text>
+<rect x="44" y="252" width="118" height="52" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="54" y="282" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">记录</text>
+<rect x="44" y="316" width="118" height="52" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="54" y="346" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">记录</text>
+<rect x="44" y="380" width="118" height="52" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="54" y="410" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="start">记录</text>
+<rect x="190" y="112" width="250" height="360" rx="12" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="206" y="140" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#111827" text-anchor="start">设置</text>
+<rect x="206" y="156" width="218" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="218" y="179" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#111827" text-anchor="start">模型</text>
+<rect x="206" y="204" width="218" height="120" rx="16" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="218" y="228" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">提示词</text>
+<rect x="206" y="420" width="218" height="40" rx="20" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="315.0" y="444.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+<rect x="456" y="112" width="308" height="360" rx="12" fill="#F7F6F3" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="520" y="180" width="180" height="220" rx="8" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="574" y="292" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#6B7280" text-anchor="start">原比例</text>
+<rect x="820" y="96" width="360" height="500" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="820" y="86" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">窄屏 · 创作 &lt; 1100</text>
+<rect x="836" y="112" width="36" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="848" y="135" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="16" font-weight="650" fill="#111827" text-anchor="start">‹</text>
+<rect x="880" y="116" width="72" height="28" rx="8" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="916.0" y="134.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+<rect x="960" y="116" width="88" height="28" rx="8" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<text x="1004.0" y="134.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#111827" text-anchor="middle">场景</text>
+<rect x="960" y="116" width="88" height="28" rx="8" fill="none" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="836" y="164" width="328" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="836" y="212" width="328" height="96" rx="16" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="836" y="324" width="328" height="40" rx="20" fill="#111827" stroke="none" stroke-width="0"/>
+<text x="1000.0" y="348.0" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="middle">生成</text>
+<rect x="900" y="384" width="200" height="180" rx="8" fill="#F7F6F3" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="28" y="640" width="520" height="250" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="28" y="630" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="13" font-weight="650" fill="#44403C" text-anchor="start">窄屏 · 记录，仍在工作台内</text>
+<rect x="28" y="640" width="520" height="44" rx="16" fill="#F7F6F3" stroke="none" stroke-width="0"/>
+<text x="44" y="668" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#78716C" text-anchor="start">顶栏仍在，可切换页面</text>
+<rect x="44" y="696" width="36" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="88" y="696" width="180" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="276" y="696" width="36" height="36" rx="18" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="52" y="760" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#44403C" text-anchor="start">返回、搜索、新建同一行</text>
+<text x="580" y="700" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">返回进入记录，记录里的返回回到创作。</text>
+<text x="580" y="722" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">宽屏不出现返回，历史留在左侧。</text>
+<text x="580" y="744" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">模型参数居中，宽 min(440px, 视口 - 32)。</text>
+<text x="580" y="766" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="start">不要画成贴左上角的气泡，也不要放宽到 480。</text>
+<rect x="900" y="660" width="280" height="180" rx="16" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1"/>
+<text x="1040" y="700" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="14" font-weight="650" fill="#111827" text-anchor="middle">模型参数</text>
+<rect x="924" y="720" width="232" height="28" rx="14" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<rect x="924" y="756" width="232" height="28" rx="14" fill="#FFFFFF" stroke="#E6E8EE" stroke-width="1"/>
+<text x="1040" y="812" font-family="PingFang SC, Hiragino Sans GB, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#9F1239" text-anchor="middle">放不下就在弹窗内滚动</text>
+</svg>
